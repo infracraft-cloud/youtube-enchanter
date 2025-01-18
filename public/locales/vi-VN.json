@@ -1,6 +1,6 @@
 {
-	"langCode": "en-US",
-	"langName": "English (US)",
+	"langCode": "vi-VN",
+	"langName": "Vietnamese",
 	"messages": {
 		"resumingVideo": "Resuming video at {{VIDEO_TIME}}",
 		"settingVolume": "Setting volume boost to {{VOLUME_BOOST_AMOUNT}}"
@@ -54,6 +54,11 @@
 							"off": "Maximize off",
 							"on": "Maximize on"
 						}
+					}
+				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
 					}
 				},
 				"openTranscriptButton": {
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "Increase Speed button",
 						"loopButton": "Loop button",
 						"maximizePlayerButton": "Maximize button",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "Open Transcript button",
 						"rewindButton": "Rewind button",
 						"screenshotButton": "Screenshot button",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "Maximize player button",
 						"title": "Adds a button to the feature menu to maximize the player"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "Open transcript button",

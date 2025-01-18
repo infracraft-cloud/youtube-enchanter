@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "打開文字記錄"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "加快速度按妞",
 						"loopButton": "循環播放按鈕",
 						"maximizePlayerButton": "最大化按鈕",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "開啟文字記錄按鈕",
 						"rewindButton": "倒帶按鈕",
 						"screenshotButton": "螢幕截圖按鈕",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "最大化播放器按鈕",
 						"title": "加入最大化播放器按鈕"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "開啟文字記錄按鈕",

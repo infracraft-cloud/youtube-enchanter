@@ -6,6 +6,8 @@ function checkForMissingKeys(englishFile: LocaleFile, localeFile: LocaleFile) {
 	const { keys: englishKeys } = flattenLocaleValues(englishFile);
 	const { keys: localeKeys } = flattenLocaleValues(localeFile);
 	if (englishKeys.length !== localeKeys.length) {
+	        console.log(englishFile);
+	        console.log(localeFile);
 		const missingKeys = englishKeys.filter((key) => !localeKeys.includes(key));
 		const message = `${(localeFile as unknown as EnUS)["langCode"]} is missing ${missingKeys.length} keys\nMissing keys:\n${missingKeys.join(", ")}`;
 		return message;

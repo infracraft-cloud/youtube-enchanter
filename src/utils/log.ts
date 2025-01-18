@@ -20,7 +20,7 @@ export function colorizeTerminalLog(message: string, type: ColorType = "FgBlack"
 	return `${color}${message}${TerminalColors.Reset}`;
 }
 export default function terminalColorLog(message: string, type?: ColorType) {
-	console.log(colorizeTerminalLog(`[${getFormattedTimestamp()}] [YouTube Enhancer]`, "FgCyan"), colorizeTerminalLog(message, type));
+	console.log(colorizeTerminalLog(`[${getFormattedTimestamp()}] [YouTube Enchanter]`, "FgCyan"), colorizeTerminalLog(message, type));
 }
 
 const TerminalColors = {

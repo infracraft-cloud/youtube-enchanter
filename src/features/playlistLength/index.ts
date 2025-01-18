@@ -1,7 +1,7 @@
 import type { Nullable } from "@/src/types";
 
 import eventManager from "@/src/utils/EventManager";
-import { YouTube_Enhancer_Public_Youtube_Data_API_V3_Key } from "@/src/utils/constants";
+import { YouTube_Enchanter_Public_Youtube_Data_API_V3_Key } from "@/src/utils/constants";
 import { isWatchPage, waitForAllElements, waitForSpecificMessage } from "@/src/utils/utilities";
 
 import { headerSelector, initializePlaylistLength, playlistItemsSelector } from "./utils";
@@ -22,7 +22,7 @@ export async function enablePlaylistLength() {
 	const urlContainsListParameter = window.location.href.includes("list=");
 	if (!urlContainsListParameter) return;
 	await waitForAllElements([headerSelector(), playlistItemsSelector()]);
-	const apiKey = youtube_data_api_v3_key === "" ? YouTube_Enhancer_Public_Youtube_Data_API_V3_Key : youtube_data_api_v3_key;
+	const apiKey = youtube_data_api_v3_key === "" ? YouTube_Enchanter_Public_Youtube_Data_API_V3_Key : youtube_data_api_v3_key;
 	const pageType = IsWatchPage ? "watch" : "playlist";
 	try {
 		documentObserver = await initializePlaylistLength({

@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "Open transcript"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "Increase Speed button",
 						"loopButton": "Botão de Repetir",
 						"maximizePlayerButton": "Botão de Maximizar",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "Abrir botão de transcrição",
 						"rewindButton": "Rewind button",
 						"screenshotButton": "Botão de captura de tela",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "Botão de maximização do reprodutor",
 						"title": "Adiciona um botão ao menu de recursos para maximizar o reprodutor"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "Abrir botão de transcrição",

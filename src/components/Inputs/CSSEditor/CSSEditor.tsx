@@ -20,7 +20,7 @@ type ScrollPosition = {
 	y: number;
 };
 
-// TODO: add share custom css button with integration with yt-enhancer.dev
+// TODO: add share custom css button with integration with yt-enchanter.dev
 
 const CSSEditor: React.FC<CSSEditorProps> = ({ className, id, onChange, value }) => {
 	const editorRef = useRef<Nullable<editor.IStandaloneCodeEditor>>(null);

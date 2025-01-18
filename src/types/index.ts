@@ -196,6 +196,7 @@ export const buttonNames = Object.keys({
 	increasePlaybackSpeedButton: "",
 	loopButton: "",
 	maximizePlayerButton: "",
+	castTranscriptButton: "",
 	openTranscriptButton: "",
 	rewindButton: "",
 	screenshotButton: "",
@@ -209,6 +210,7 @@ export const buttonNameToSettingName = {
 	increasePlaybackSpeedButton: "enable_playback_speed_buttons",
 	loopButton: "enable_loop_button",
 	maximizePlayerButton: "enable_maximize_player_button",
+	castTranscriptButton: "enable_cast_transcript_button",
 	openTranscriptButton: "enable_open_transcript_button",
 	rewindButton: "enable_forward_rewind_buttons",
 	screenshotButton: "enable_screenshot_button",
@@ -380,6 +382,7 @@ export type ExtensionSendOnlyMessageMappings = {
 	languageChange: DataResponseMessage<"languageChange", { language: AvailableLocales }>;
 	loopButtonChange: DataResponseMessage<"loopButtonChange", { loopButtonEnabled: boolean }>;
 	maximizeButtonChange: DataResponseMessage<"maximizeButtonChange", { maximizePlayerButtonEnabled: boolean }>;
+	castTranscriptButtonChange: DataResponseMessage<"castTranscriptButtonChange", { castTranscriptButtonEnabled: boolean }>;
 	openTranscriptButtonChange: DataResponseMessage<"openTranscriptButtonChange", { openTranscriptButtonEnabled: boolean }>;
 	openYTSettingsOnHoverChange: DataResponseMessage<
 		"openYTSettingsOnHoverChange",
@@ -474,6 +477,7 @@ export type configuration = {
 	enable_hide_translate_comment: boolean;
 	enable_loop_button: boolean;
 	enable_maximize_player_button: boolean;
+	enable_cast_transcript_button: boolean;
 	enable_open_transcript_button: boolean;
 	enable_open_youtube_settings_on_hover: boolean;
 	enable_pausing_background_players: boolean;

@@ -34,6 +34,7 @@ export const defaultConfiguration = {
 		increasePlaybackSpeedButton: "player_controls_left",
 		loopButton: "feature_menu",
 		maximizePlayerButton: "feature_menu",
+		castTranscriptButton: "feature_menu",
 		openTranscriptButton: "feature_menu",
 		rewindButton: "player_controls_right",
 		screenshotButton: "feature_menu",
@@ -67,6 +68,7 @@ export const defaultConfiguration = {
 	enable_hide_translate_comment: false,
 	enable_loop_button: false,
 	enable_maximize_player_button: false,
+	enable_cast_transcript_button: false,
 	enable_open_transcript_button: false,
 	enable_open_youtube_settings_on_hover: false,
 	enable_pausing_background_players: false,
@@ -162,6 +164,7 @@ export const configurationImportSchema: TypeToPartialZodSchema<
 	enable_hide_translate_comment: z.boolean().optional(),
 	enable_loop_button: z.boolean().optional(),
 	enable_maximize_player_button: z.boolean().optional(),
+	enable_cast_transcript_button: z.boolean().optional(),
 	enable_open_transcript_button: z.boolean().optional(),
 	enable_open_youtube_settings_on_hover: z.boolean().optional(),
 	enable_pausing_background_players: z.boolean().optional(),
@@ -215,4 +218,4 @@ export const configurationImportSchema: TypeToPartialZodSchema<
 });
 export const DEV_MODE = process.env.__DEV__ === "true";
 export const ENABLE_SOURCE_MAP = DEV_MODE === true ? "inline" : false;
-export const YouTube_Enhancer_Public_Youtube_Data_API_V3_Key = "AIzaSyA_z2BR_HSfKsPvuttqjD_6AY60zgqbm5k";
+export const YouTube_Enchanter_Public_Youtube_Data_API_V3_Key = "AIzaSyA_z2BR_HSfKsPvuttqjD_6AY60zgqbm5k";

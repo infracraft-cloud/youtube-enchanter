@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "스크립트 보기"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "속도 조절 버튼",
 						"loopButton": "연속 재생 버튼",
 						"maximizePlayerButton": "화면 크기에 맞추기 버튼",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "스크립트 보기 버튼",
 						"rewindButton": "되감기 버튼",
 						"screenshotButton": "스크린샷 버튼",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "화면 크기에 맞추기 버튼",
 						"title": "추가 기능 메뉴에 \"화면 크기에 맞추기\" 버튼을 추가합니다."
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "스크립트 보기 버튼",

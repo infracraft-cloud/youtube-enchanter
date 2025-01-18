@@ -77,6 +77,9 @@ export async function addFeatureItemToMenu<Name extends AllButtonNames, Toggle e
 	const menuItemLabel = document.createElement("div");
 	menuItemLabel.classList.add("ytp-menuitem-label");
 	menuItemLabel.textContent = label;
+	if (label.substring(0, 5).toLowerCase() === "cast ") {	  
+	       menuItemLabel.style.color = "deepskyblue";
+	}
 	menuItemLabel.id = featureMenuItemLabelId;
 	eventManager.addEventListener(menuItem, "click", () => featureMenuClickListener(menuItem, listener, isToggle), featureName);
 	menuItem.appendChild(menuItemLabel);

@@ -36,6 +36,8 @@ import { disableHideTranslateComment, enableHideTranslateComment } from "@/src/f
 import { addLoopButton, removeLoopButton } from "@/src/features/loopButton";
 import { addMaximizePlayerButton, removeMaximizePlayerButton } from "@/src/features/maximizePlayerButton";
 import { maximizePlayer } from "@/src/features/maximizePlayerButton/utils";
+import { castTranscriptButton } from "@/src/features/castTranscriptButton";
+import { removeCastTranscriptButton } from "@/src/features/castTranscriptButton/utils";
 import { openTranscriptButton } from "@/src/features/openTranscriptButton";
 import { removeOpenTranscriptButton } from "@/src/features/openTranscriptButton/utils";
 import { disableOpenYouTubeSettingsOnHover, enableOpenYouTubeSettingsOnHover } from "@/src/features/openYouTubeSettingsOnHover";
@@ -236,6 +238,7 @@ const enableFeatures = () => {
 		// Features that add buttons should be put below and be ordered in the order those buttons should appear
 		await addHideEndScreenCardsButton();
 		await addScreenshotButton();
+		await castTranscriptButton();
 		await openTranscriptButton();
 		await addMaximizePlayerButton();
 		await addLoopButton();
@@ -776,6 +779,17 @@ window.addEventListener("DOMContentLoaded", function () {
 							data: { featureMenuOpenType }
 						} = message;
 						setupFeatureMenuEventListeners(featureMenuOpenType);
+						break;
+					}
+					case "castTranscriptButtonChange": {
+						const {
+							data: { castTranscriptButtonEnabled }
+						} = message;
+						if (castTranscriptButtonEnabled) {
+							await castTranscriptButton();
+						} else {
+							await removeCastTranscriptButton();
+						}
 						break;
 					}
 					case "openTranscriptButtonChange": {

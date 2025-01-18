@@ -366,6 +366,7 @@ export default function Settings() {
 		| "button_placements.increasePlaybackSpeedButton"
 		| "button_placements.loopButton"
 		| "button_placements.maximizePlayerButton"
+		| "button_placements.castTranscriptButton"
 		| "button_placements.openTranscriptButton"
 		| "button_placements.rewindButton"
 		| "button_placements.screenshotButton"
@@ -491,7 +492,7 @@ export default function Settings() {
 			// Get the current date and time, and format it for use in the filename.
 			const timestamp = formatDateForFileName(new Date());
 			// Create the filename.
-			const filename = `youtube_enhancer_settings_${timestamp}.json`;
+			const filename = `youtube_enchanter_settings_${timestamp}.json`;
 			// Convert the settings to JSON.
 			const settingsJSON = JSON.stringify(exportableSettings);
 			// Create a blob to hold the JSON.
@@ -524,7 +525,7 @@ export default function Settings() {
 				<div className="sticky left-0 top-0 z-10 flex flex-col justify-between gap-1 bg-[#f5f5f5] dark:bg-[#181a1b]">
 					<h1 className="flex content-center items-center gap-3 text-xl font-bold sm:text-2xl md:text-3xl" dir={"ltr"}>
 						<img className="h-16 w-16" src="/icons/icon_128.png" />
-						YouTube Enhancer
+						YouTube Enchanter
 						<small className="light text-xs sm:text-sm md:text-base">v{chrome.runtime.getManifest().version}</small>
 					</h1>
 					<SettingSearch i18nInstance={i18nInstance} />
@@ -652,6 +653,14 @@ export default function Settings() {
 						label={t("settings.sections.miscellaneous.features.automaticTheaterMode.label")}
 						onChange={setCheckboxOption("enable_automatic_theater_mode")}
 						title={t("settings.sections.miscellaneous.features.automaticTheaterMode.title")}
+						type="checkbox"
+					/>
+					<Setting
+						checked={settings.enable_cast_transcript_button?.toString() === "true"}
+						id="enable_cast_transcript_button"
+						label={t("settings.sections.miscellaneous.features.castTranscriptButton.label")}
+						onChange={setCheckboxOption("enable_cast_transcript_button")}
+						title={t("settings.sections.miscellaneous.features.castTranscriptButton.title")}
 						type="checkbox"
 					/>
 					<Setting

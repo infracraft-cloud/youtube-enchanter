@@ -51,11 +51,11 @@ export async function fetchPlaylistVideos(playlistId: string, apiKey: string): P
 			if (youtubeDataAPIParsed.success && youtubeDataAPIParsed.data.error) {
 				switch (youtubeDataAPIParsed.data.error.code) {
 					case 403:
-						throw new Error("YouTube Enhancer (YouTube Data API V3): Quota exceeded. Please try again later.");
+						throw new Error("YouTube Enchanter (YouTube Data API V3): Quota exceeded. Please try again later.");
 					case 404:
-						throw new Error("YouTube Enhancer (YouTube Data API V3): Playlist not found. Please try again later.");
+						throw new Error("YouTube Enchanter (YouTube Data API V3): Playlist not found. Please try again later.");
 					default:
-						throw new Error("YouTube Enhancer (YouTube Data API V3): Unknown error. Please try again later.");
+						throw new Error("YouTube Enchanter (YouTube Data API V3): Unknown error. Please try again later.");
 				}
 			}
 			const parsedData = youtubePlaylistResponseSchema.safeParse(data);

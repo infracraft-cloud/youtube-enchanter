@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "Apri trascrizione"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "Pulsante Aumenta velocità",
 						"loopButton": "Pulsante Ripeti",
 						"maximizePlayerButton": "Pulsante Massimizza",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "Pulsante Apri trascrizione",
 						"rewindButton": "Pulsante Riavvolgi",
 						"screenshotButton": "Pulsante Schermata",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "Pulsante Ingrandisci riproduttore",
 						"title": "Aggiunge un pulsante al menu' funzioni per ingrandire il riproduttore"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "Pulsante Apri trascrizione",

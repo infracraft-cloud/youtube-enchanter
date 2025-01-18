@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "打开转写文稿"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "增加速度按钮",
 						"loopButton": "循环按钮",
 						"maximizePlayerButton": "最大化按钮",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "转写文稿按钮",
 						"rewindButton": "快退按钮",
 						"screenshotButton": "屏幕截图按钮",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "最大化播放器按钮",
 						"title": "在功能菜单中添加一个按钮来最大化播放器"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "转写文稿按钮",

@@ -1,5 +1,5 @@
 {
-	"langCode": "en-US",
+	"langCode": "sv-SE",
 	"langName": "Svenska (SV)",
 	"messages": {
 		"resumingVideo": "Återupptar video vid {{VIDEO_TIME}}",
@@ -54,6 +54,11 @@
 							"off": "Maximera av",
 							"on": "Maximera på"
 						}
+					}
+				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
 					}
 				},
 				"openTranscriptButton": {
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "Knapp för att öka hastigheten",
 						"loopButton": "Slingknapp",
 						"maximizePlayerButton": "Maximeraknapp",
+						"castTranscriptButton": "Transkriptknapp",
 						"openTranscriptButton": "Transkriptknapp",
 						"rewindButton": "Återspolningsknapp",
 						"screenshotButton": "Skärmbildsknapp",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "Maximeringsknapp för spelaren",
 						"title": "Lägger till en knapp i funktionsmenyn för att maximera spelaren"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "Öppningsknapp för transkript",

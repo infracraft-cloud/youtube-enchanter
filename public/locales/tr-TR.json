@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "Open transcript"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "Increase Speed button",
 						"loopButton": "Döngü düğmesi",
 						"maximizePlayerButton": "Tam ekran düğmesi",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "Open Transcript button",
 						"rewindButton": "Rewind button",
 						"screenshotButton": "Ekran görüntüsü düğmesi",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "Oynatıcıyı tam ekran yapma düğmesini etkinleştir",
 						"title": "Oynatıcıyı büyütmek için özellik menüsüne bir düğme ekler"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "Not dökümü düğmesini gizle",

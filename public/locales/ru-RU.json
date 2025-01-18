@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "Открыть стенограмму"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "Кнопка увеличения скорости видео",
 						"loopButton": "Кнопка «Зациклить»",
 						"maximizePlayerButton": "Кнопка «Развернуть»",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "Кнопка «Открыть стенограмму»",
 						"rewindButton": "Кнопка перемотки назад",
 						"screenshotButton": "Кнопка «Скриншот»",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "Включить кнопку «Развернуть проигрыватель»",
 						"title": "Добавляет кнопку в меню функций, которая позволит максимизировать проигрыватель"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "Показать кнопку стенограммы видео",

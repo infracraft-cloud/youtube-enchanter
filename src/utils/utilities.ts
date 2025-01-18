@@ -177,7 +177,7 @@ function groupMessages(messages: { message: string; styling: string[] }[]): Arra
  * @returns The colorized log message.
  */
 export function browserColorLog(message: string, type?: ColorType) {
-	const prependLog = colorizeLog(`[${getFormattedTimestamp()}] [YouTube Enhancer]`, "FgCyan");
+	const prependLog = colorizeLog(`[${getFormattedTimestamp()}] [YouTube Enchanter]`, "FgCyan");
 	const colorizedMessage = colorizeLog(message, type);
 	console.log(...groupMessages([prependLog, colorizedMessage]));
 }

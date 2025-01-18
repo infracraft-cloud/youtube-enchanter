@@ -24,6 +24,7 @@ interface EnUS {
 				};
 				loopButton: { button: { label: "Loop"; toggle: { off: "Loop off"; on: "Loop on" } } };
 				maximizePlayerButton: { button: { label: "Maximize"; toggle: { off: "Maximize off"; on: "Maximize on" } } };
+				castTranscriptButton: { button: { label: "Cast transcript" } };
 				openTranscriptButton: { button: { label: "Open transcript" } };
 				playbackSpeedButtons: {
 					buttons: {
@@ -109,6 +110,7 @@ interface EnUS {
 						increasePlaybackSpeedButton: "Increase Speed button";
 						loopButton: "Loop button";
 						maximizePlayerButton: "Maximize button";
+						castTranscriptButton: "Cast Transcript button";
 						openTranscriptButton: "Open Transcript button";
 						rewindButton: "Rewind button";
 						screenshotButton: "Screenshot button";
@@ -221,6 +223,10 @@ interface EnUS {
 					maximizePlayerButton: {
 						label: "Maximize player button";
 						title: "Adds a button to the feature menu to maximize the player";
+					};
+					castTranscriptButton: {
+						label: "Cast transcript button";
+						title: "Adds a button to the feature menu to cast the transcript of the video you're watching";
 					};
 					openTranscriptButton: {
 						label: "Open transcript button";

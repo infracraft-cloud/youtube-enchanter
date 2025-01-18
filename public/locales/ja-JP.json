@@ -56,6 +56,11 @@
 						}
 					}
 				},
+				"castTranscriptButton": {
+					"button": {
+						"label": "Cast transcript"
+					}
+				},
 				"openTranscriptButton": {
 					"button": {
 						"label": "文字起こしを見せる"
@@ -172,6 +177,7 @@
 						"increasePlaybackSpeedButton": "速度を上げるボタン",
 						"loopButton": "ループボタン",
 						"maximizePlayerButton": "最大表示ボタン",
+						"castTranscriptButton": "Cast Transcript button",
 						"openTranscriptButton": "文字起こしを見せるボタン",
 						"rewindButton": "リワインドボタン",
 						"screenshotButton": "スクリーンショットボタン",
@@ -311,6 +317,10 @@
 					"maximizePlayerButton": {
 						"label": "最大化ボタン",
 						"title": "プレイヤーを最大化するボタンをフィーチャー・メニューに追加する"
+					},
+					"castTranscriptButton": {
+						"label": "Cast transcript button",
+						"title": "Adds a button to the feature menu to cast the transcript of the video you're watching"
 					},
 					"openTranscriptButton": {
 						"label": "文字起こしを見せるボタン",

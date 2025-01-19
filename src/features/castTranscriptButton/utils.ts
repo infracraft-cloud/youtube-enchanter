@@ -5,17 +5,18 @@ import { getFeatureIcon } from "@/src/icons";
 import eventManager from "@/src/utils/EventManager";
 import { waitForSpecificMessage } from "@/src/utils/utilities";
 
+import { createStyledElement } from "@/src/utils/utilities";
 
-# TODO: 1. find initialization script
-# TODO: 2. move this policy creation to initialization script
-# TODO: 3. flesh out cast transcript listener
+/*
+// How to add trustedpolicies. ref: https://stackoverflow.com/questions/78237946/how-to-fix-trustedhtml-assignement-error-with-vuejs
 if (typeof window.trustedTypes == 'undefined') window.trustedTypes = {createPolicy: (n, rules) => rules};
 
-export const policy = trustedTypes.createPolicy('youtube-enchanter', {
+export const trustedPolicy = trustedTypes.createPolicy('youtube-enchanter', {
   createHTML: (string, sink) => {
     return string;
   }
 });
+*/
 
 export const addCastTranscriptButton: AddButtonFunction = async () => {
 	// Wait for the "options" message from the content script
@@ -28,7 +29,12 @@ export const addCastTranscriptButton: AddButtonFunction = async () => {
 	} = await waitForSpecificMessage("options", "request_data", "content");
 	function castTranscriptButtonClickerListener() {
 		let transcriptButton = document.querySelector("#above-the-fold #title");
-		transcriptButton.innerHTML = policy.createHTML("TEST");
+		transcriptButton.textContent = "test1"
+		let test = createStyledElement({
+		    elementType: "div"
+		});
+		test.textContent = "test1";
+		transcriptButton.appendChild(test);
 	}
 	await addFeatureButton(
 		"castTranscriptButton",

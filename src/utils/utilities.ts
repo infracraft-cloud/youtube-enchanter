@@ -840,3 +840,14 @@ export function timeStringToSeconds(timeString: string): number {
 	}
 	return seconds;
 }
+
+export const selectWithLog = async (selector: string, awaitBeforeSelect: boolean, errorMsg: string) => {
+        if (awaitBeforeSelect) {
+	        await waitForAllElements([selector]);
+	}
+        const ret = document.querySelector(selector);
+	if (ret === null) {
+	        browserColorLog(`${errorMsg} (selector=${selector})`, "FgRed");
+	}
+	return ret;
+}

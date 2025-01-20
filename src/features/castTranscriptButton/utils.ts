@@ -22,57 +22,17 @@ rootElement.innerHTML = policy.createHTML("...");
 
 // Caption notes
 // ref: https://stackoverflow.com/questions/32142656/get-youtube-captions
+
+
+// How to call url
+// const response = await fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
+//	headers: { Test: "test" },
+//  	method: "get"
+//});
+// const data = await response.text();
+// const json = JSON.parse(data);
 */
 
-const buildSegment = (caption: string, start_timestamp_s: number, end_timestamp_s: number) => {
-      const start_hour = Math.floor(start_timestamp_s / 3600);
-      const start_min = Math.floor((start_timestamp_s % 3600) / 60);
-      const start_sec = start_timestamp_s % 60;
-
-      let start_str_words = "";
-      if (start_timestamp_s > 0) {
-	if (start_hour > 0) {
-	   start_str_words += `${start_hour} hour`;
-	   if (start_hour > 1) {
-	      start_str_words += "s";
-	   }
-	}
-	if (start_min > 0) {
-	   if (start_str_words.length > 0) {
-	      start_str_words += ", ";
-	   }
-
-	   start_str_words += `${start_min} minute`;
-	   if (start_min > 1) {
-	      start_str_words += "s";
-	   }
-	}
-	if (start_sec > 0) {
-	   if (start_str_words.length > 0) {
-	      start_str_words += ", ";
-	   }
-
-	   start_str_words += `${start_sec} second`;
-	   if (start_sec > 1) {
-	      start_str_words += "s";
-	   }
-	}
-      } else {
-      	start_str_words = "0 seconds";
-      }
-
-      let start_str_digits = `${start_sec.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}`;
-      if (start_min > 0 || start_hour > 0) {
-      	 start_str_digits = `${start_min}:` + start_str_digits;
-      } else {
-         start_str_digits = "0:" + start_str_digits;
-      }
-      if (start_hour > 0) {
-      	 start_str_digits = `${start_hour}:` + start_str_digits;
-      }
-      
-      return `<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}" caption="${caption}"><div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true"><div class="segment-timestamp style-scope ytd-transcript-segment-renderer">${start_str_digits}</div></div><dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if><yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">${caption}</yt-formatted-string><dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>\n</div>`;
-}
 
 const loadCastTranscriptPanel = async () => {
 	const transcriptRenderer = document.querySelector("ytd-transcript-renderer");
@@ -89,7 +49,7 @@ const loadCastTranscriptPanel = async () => {
 	      // Make transcript panel hidden so the viewer can't see this quick load/unload behavior
               const transcriptPanel = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript]");
 	      
-	      const prevDisplay = transcriptPanel.style.visibility;
+	      const prevVisibility = transcriptPanel.style.display;
 	      transcriptPanel.style.visibility = "hidden";
 	      transcriptButton.click();
 
@@ -100,13 +60,16 @@ const loadCastTranscriptPanel = async () => {
 					"ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-search-panel-renderer ytd-transcript-segment-list-renderer"]);
 
 	      // While we have the transcript panel up, build the cast transcript panel by copying its structure
-	      ret = await buildCastTranscriptPanel();
-	      ret.style.visibility = prevDisplay;  // ret is stylistically a copy of transcriptPanel, which we temporary made hidden, so here we revert the visibility
+ 	      ret = await buildCastTranscriptPanel();
 
 	      // Close the transcript panel. Remember to revert its visibility
 	      const closeTranscript = document.querySelector('button[aria-label="Close transcript"]')
 	      if (closeTranscript) closeTranscript.click();
-              transcriptPanel.style.visibility = prevDisplay;
+              transcriptPanel.style.visibility = prevVisibility;
+
+	      // Now that the cast transcript panel is built, fill up the content
+	      const castTranscriptSegments = ret.querySelector("ytd-transcript-segment-list-renderer");
+	      await populateTranscript(castTranscriptSegments);
 	}
 	return ret;
 }
@@ -121,6 +84,8 @@ const buildCastTranscriptPanel = async () => {
 	      castTranscriptPanel = transcriptPanel.cloneNode(true);
 	      transcriptPanel.after(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
 	      castTranscriptPanel.setAttribute("target-id", "engagement-panel-cast-transcript");
+	      castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED");
+	      castTranscriptPanel.style.visibility = "";
 
 	      // Create cast transcript panel's title
 	      await waitForAllElements(["ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer"]);
@@ -144,40 +109,104 @@ const buildCastTranscriptPanel = async () => {
 	      const transcriptSegments = transcriptBody.querySelector("ytd-transcript-segment-list-renderer");
 	      const castTranscriptSegments = transcriptSegments.cloneNode(true);
 	      castTranscriptBody.children[1].appendChild(castTranscriptSegments);  // NOTE: node has to be added first before we can modify its properties
-
-	      populateTranscript(castTranscriptSegments);
 	}
 	
 	return castTranscriptPanel;
 }
 
-const populateTranscript = (transcriptSegments: HTMLElement) => {
-      let segmentsHTML = ""
-      segmentsHTML += buildSegment("test1", 0, 10);
-      segmentsHTML += buildSegment("test2", 10, 20);
-      segmentsHTML += buildSegment("test3", 20, 30);
-      
+const populateTranscript = async (transcriptSegments: HTMLElement) => {
       const segmentsContainer = transcriptSegments.querySelector("#segments-container");
-      segmentsContainer.innerHTML = trustedPolicy.createHTML(segmentsHTML);
+      setSegments(segmentsContainer, null);
+      
+      const response = await fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
+	     headers: { Test: "test" },
+  	     method: "get"
+      });
+      const text_response = await response.text();
+      const json_response = JSON.parse(text_response);
+      setSegments(segmentsContainer, json_response);
+}
 
-      const segments = segmentsContainer.querySelectorAll("div[caption]");
-      for (let i = 0; i < segments.length; i++) {
-      	  const segment = segments[i];
-	  const segmentCaption = segment.querySelector("yt-formatted-string");
-	  segmentCaption.removeAttribute("is-empty");
-	  segmentCaption.textContent = segment.getAttribute("caption");
-      }
+
+const setSegments = (segmentsContainer: HTMLElement, json_response) => {
+       let segmentsHTML = "";
+
+       if (json_response !== null) {
+	   for (let i = 0; i < json_response.transcription.chunks.length; i++) {
+		 const chunk = json_response.transcription.chunks[i];
+		 segmentsHTML += buildSegmentHTML(chunk.text, chunk.timestamp[0], chunk.timestamp[1]);
+	   }
+       } else {
+           segmentsHTML = buildSegmentHTML("Loading...", -1, -1);
+       }
+       
+       segmentsContainer.innerHTML = trustedPolicy.createHTML(segmentsHTML);
+       
+       const segments = segmentsContainer.querySelectorAll("div[caption]");
+       for (let i = 0; i < segments.length; i++) {
+	   const segment = segments[i];
+	   const segmentCaption = segment.querySelector("yt-formatted-string");
+	   if (segmentCaption.hasAttribute("is-empty")) {
+	       segmentCaption.removeAttribute("is-empty");
+	       segmentCaption.textContent = segment.getAttribute("caption");
+	   }
+       }
+}
+
+const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timestamp_s: number) => {      
+	const start_hour = Math.floor(start_timestamp_s / 3600);
+	const start_min = Math.floor((start_timestamp_s % 3600) / 60);
+	const start_sec = Math.floor(start_timestamp_s % 60);
+
+	let start_str_words = "";
+	let start_str_digits = "";
+	if (start_timestamp_s >= 0) {
+	      if (start_timestamp_s > 0) {
+		  if (start_hour > 0) {
+		     start_str_words += `${start_hour} hour`;
+		     if (start_hour > 1) {
+			start_str_words += "s";
+		     }
+		  }
+		  if (start_min > 0) {
+		     if (start_str_words.length > 0) {
+			start_str_words += ", ";
+		     }
+
+		     start_str_words += `${start_min} minute`;
+		     if (start_min > 1) {
+			start_str_words += "s";
+		     }
+		  }
+		  if (start_sec > 0) {
+		     if (start_str_words.length > 0) {
+			start_str_words += ", ";
+		     }
+
+		     start_str_words += `${start_sec} second`;
+		     if (start_sec > 1) {
+			start_str_words += "s";
+		     }
+		  }
+	      } else {
+		  start_str_words = "0 seconds";
+	      }
+
+	      start_str_digits = `${start_sec.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}`;
+	      if (start_min > 0 || start_hour > 0) {
+		   start_str_digits = `${start_min}:` + start_str_digits;
+	      } else {
+		   start_str_digits = "0:" + start_str_digits;
+	      }
+	      if (start_hour > 0) {
+		   start_str_digits = `${start_hour}:` + start_str_digits;
+	      }
+	}
+
+	return `<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}" caption="${caption}"><div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true"><div class="segment-timestamp style-scope ytd-transcript-segment-renderer">${start_str_digits}</div></div><dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if><yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">${caption}</yt-formatted-string><dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>\n</div>`;
 }
 
 const castTranscriptAction = async () => {
-        /*
-	const response = await fetch("ipecho.net/plain", {
-		headers: { Test: "test" },
-		method: "get"
-	});
-	const data = await response.text();
-	// const json = JSON.parse(data);
-	*/
 
 
 	const castTranscriptPanel = await loadCastTranscriptPanel();

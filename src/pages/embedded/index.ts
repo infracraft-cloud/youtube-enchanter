@@ -112,6 +112,15 @@ element.style.display = "none";
 element.id = "yte-message-from-youtube";
 document.documentElement.appendChild(element);
 
+// Add trusted policy for easier HTML creation
+if (typeof window.trustedTypes == 'undefined') window.trustedTypes = {createPolicy: (n, rules) => rules};
+
+export const trustedPolicy = trustedTypes.createPolicy('youtube-enchanter', {
+  createHTML: (string, sink) => {
+    return string;
+  }
+});
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const alwaysShowProgressBar = async function () {
 	const player = document.querySelector<YouTubePlayerDiv>("#movie_player");

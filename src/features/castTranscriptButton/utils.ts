@@ -3,10 +3,10 @@ import type { AddButtonFunction, RemoveButtonFunction } from "@/src/features";
 import { addFeatureButton, removeFeatureButton } from "@/src/features/buttonPlacement";
 import { getFeatureIcon } from "@/src/icons";
 import eventManager from "@/src/utils/EventManager";
-import { waitForAllElements, waitForSpecificMessage } from "@/src/utils/utilities";
+import { id_2_waitSelectMetadata, waitForAllElements, waitForSpecificMessage } from "@/src/utils/utilities";
 
-import { trustedPolicy } from "@/src/pages/embedded";
-import { selectWithLog, createStyledElement } from "@/src/utils/utilities";
+import { browserColorLog, createStyledElement, safeSelect, waitSelect } from "@/src/utils/utilities";
+import { trustedPolicy} from "@/src/pages/embedded";
 
 /*
 // How to add trustedpolicies. ref: https://stackoverflow.com/questions/78237946/how-to-fix-trustedhtml-assignement-error-with-vuejs
@@ -19,6 +19,10 @@ export const trustedPolicy = trustedTypes.createPolicy('youtube-enchanter', {
 });
 
 rootElement.innerHTML = policy.createHTML("...");
+
+
+// Kevin's notes: read this for more info on javascript: https://stackoverflow.com/a/47227878  (async and job queue)
+// ref: https://stackoverflow.com/a/40880620  (event loop)
 
 // Caption notes
 // ref: https://stackoverflow.com/questions/32142656/get-youtube-captions
@@ -33,78 +37,54 @@ rootElement.innerHTML = policy.createHTML("...");
 // const json = JSON.parse(data);
 */
 
-
 const loadCastTranscriptPanel = async () => {
 	let ret = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
 	if (ret === null || ret.getAttribute("status") !== "done") {
-	    // Cast Transcript panel hasn't been built yet, so build it
+	    // Cast Transcript panel hasn't been fully built yet, so build it from scratch
 
 	    // First, load the (regular) transcript panel, so that we can copy its style and structure
-            const transcriptPanel = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript]", false, "loadCastTranscriptPanel() error: could not find OpenTranscript panel");
-	    if (transcriptPanel === null) {
-		    return null;
-	    }
-	    
-	    const loadTranscript = (transcriptPanel !== null) && (transcriptPanel.querySelector("ytd-transcript-renderer ytd-transcript-search-panel-renderer ytd-transcript-segment-list-renderer") === null);
-	    let prevVisibility = "";
-	    if (loadTranscript) {
-		  // Make transcript panel hidden so the viewer can't see this quick load/unload behavior
-		  prevVisibility = transcriptPanel.style.display;
-		  transcriptPanel.style.visibility = "hidden";
+	    let transcriptPanel = null;
+	    let loadTranscript = null;
+	    let prevVisibility = null;
+	    return waitSelect(document, "ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript]").then((transcriptPanelMetadata) => {
+	          transcriptPanel = transcriptPanelMetadata.result;
+
+		  // If the OpenTranscript panel has not been fully loaded yet (by checking the segments content), load it
+		  loadTranscript = (transcriptPanel.querySelector("ytd-transcript-renderer ytd-transcript-search-panel-renderer ytd-transcript-segment-list-renderer") === null);
+		  prevVisibility = "";
 		  
-        	  const transcriptButton = document.querySelector<HTMLButtonElement>("ytd-video-description-transcript-section-renderer button");
-		  if (transcriptButton) transcriptButton.click();
-		  
-		  await waitForAllElements(["ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript]",
-					    "ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer",
-					    "ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer",
-					    "ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-search-panel-renderer",
-					    "ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-search-panel-renderer ytd-transcript-segment-list-renderer"]);
-	    }
+		  if (loadTranscript) {
+			// Make transcript panel hidden so the viewer can't see this quick load/unload behavior
+			prevVisibility = transcriptPanel.style.display;
+			transcriptPanel.style.visibility = "hidden";
+
+			const transcriptButton = document.querySelector<HTMLButtonElement>("ytd-video-description-transcript-section-renderer button");
+			if (transcriptButton) transcriptButton.click();
+		  }
 
 
-	    // While we have the transcript panel up, build the cast transcript panel by copying its structure
+		  // While we have the transcript panel up, build the cast transcript panel by copying its structure
+		  return buildCastTranscriptPanel(transcriptPanel);
+	    }).then((castTranscriptPanel) => {
+		  if (loadTranscript) {
+			// Close the transcript panel. Remember to revert its visibility
+			const closeTranscript = document.querySelector('button[aria-label="Close transcript"]')
+			if (closeTranscript) closeTranscript.click();
+			transcriptPanel.style.visibility = prevVisibility;
+		  }
 
-	    /*
-	    try {
-	    	ret = await buildCastTranscriptPanel();
-	    } catch (e) {
-		throw e;
-	    } finally {
-		if (loadTranscript) {
-		      // Close the transcript panel. Remember to revert its visibility
-		      const closeTranscript = document.querySelector('button[aria-label="Close transcript"]')
-		      if (closeTranscript) closeTranscript.click();
-		      transcriptPanel.style.visibility = prevVisibility;
-		}
-		
-	    }
-	    */
+		  const castTranscriptSegments = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
+		  if (castTranscriptSegments) populateCastTranscript(castTranscriptSegments);
 
-            ret = await buildCastTranscriptPanel();
-	    if (loadTranscript) {
-		  // Close the transcript panel. Remember to revert its visibility
-		  const closeTranscript = document.querySelector('button[aria-label="Close transcript"]')
-		  if (closeTranscript) closeTranscript.click();
-		  transcriptPanel.style.visibility = prevVisibility;
-	    }
-		
-	    // Now that the cast transcript panel is built, fill up the content
-	    if (ret) ret.setAttribute("status", "processing");
-	    const castTranscriptSegments = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript] ytd-transcript-segment-list-renderer", false, "loadCastTranscriptPanel() error: could not find CastTranscript segment list");
-	    if (castTranscriptSegments) await populateTranscript(castTranscriptSegments);
-	    if (ret) ret.setAttribute("status", "done");
-
+		  return castTranscriptPanel;
+	    });
 	}
-	return ret;
+	
+        return ret;
 }
 
-const buildCastTranscriptPanel = async () => {
+const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 	// Create cast transcript panel
-	const transcriptPanel = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript]", true, "buildCastTranscriptPanel() error: could not find OpenTranscript panel");
-	if (transcriptPanel === null) {
-	   return null;
-	}
 	const castTranscriptPanel = transcriptPanel.cloneNode(true);
 	transcriptPanel.after(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
 	castTranscriptPanel.setAttribute("target-id", "engagement-panel-cast-transcript");
@@ -112,8 +92,48 @@ const buildCastTranscriptPanel = async () => {
 	castTranscriptPanel.setAttribute("status", "initializing");
 	castTranscriptPanel.style.visibility = "";
 
+
+	let castTranscriptTitle = null;
+	const titleBuilder = waitSelect(transcriptPanel, "ytd-engagement-panel-title-header-renderer").then((titleMetadata) => {
+	      const transcriptTitle = titleMetadata.result;
+	      castTranscriptTitle = transcriptTitle.cloneNode(true);
+	      castTranscriptPanel.children[0].appendChild(castTranscriptTitle);  // NOTE: node has to be added first before we can modify its properties
+	      castTranscriptTitle.querySelector("#title-text").textContent = "Casted Transcript";
+	      castTranscriptTitle.querySelector("#icon").style.width = "0px";
+
+	      return waitSelect(transcriptTitle, "#visibility-button ytd-button-renderer");
+	}).then((titleCloseButtonMetadata) => {
+	      const transcriptTitleCloseButton = titleCloseButtonMetadata.result;
+	      const castTranscriptTitleCloseButton = transcriptTitleCloseButton.cloneNode(true);
+	      castTranscriptTitle.children[2].children[6].appendChild(castTranscriptTitleCloseButton);  // NOTE: node has to be added first before we can modify its properties
+	});
+
+	let castTranscriptContent = null;
+	let castTranscriptBody = null;
+	const contentBuilder = waitSelect(transcriptPanel, "ytd-transcript-renderer").then((contentMetadata) => {
+	      const transcriptContent = contentMetadata.result;
+	      castTranscriptContent = transcriptContent.cloneNode(true);
+	      castTranscriptPanel.children[1].appendChild(castTranscriptContent);  // NOTE: node has to be added first before we can modify its properties
+
+	      return waitSelect(transcriptContent, "ytd-transcript-search-panel-renderer");
+	}).then((transcriptBodyMetadata) => {
+	      const transcriptBody = transcriptBodyMetadata.result;
+	      castTranscriptBody = transcriptBody.cloneNode(true);
+	      castTranscriptContent.children[1].appendChild(castTranscriptBody);  // NOTE: node has to be added first before we can modify its properties
+
+	      return waitSelect(transcriptBody, "ytd-transcript-segment-list-renderer");
+	}).then((transcriptSegmentsMetadata) => {
+	      const transcriptSegments = transcriptSegmentsMetadata.result;
+	      const castTranscriptSegments = transcriptSegments.cloneNode(true);
+	      castTranscriptBody.children[1].appendChild(castTranscriptSegments);  // NOTE: node has to be added first before we can modify its properties
+	});
+
+	await titleBuilder;
+	await contentBuilder;
+
+	/*
 	// Create cast transcript panel's title
-	const transcriptTitle = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript title");
+	const transcriptTitle = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript title");
 	if (transcriptTitle === null) {
 	   return null;
 	}
@@ -122,57 +142,75 @@ const buildCastTranscriptPanel = async () => {
 	castTranscriptTitle.querySelector("#title-text").textContent = "Casted Transcript";
 	castTranscriptTitle.querySelector("#icon").style.width = "0px";
 
+	const transcriptTitleCloseButton = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer #visibility-button ytd-button-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript title close button");
+	if (transcriptTitleCloseButton === null) {
+	   return null;
+	}
+	const castTranscriptTitleCloseButton = transcriptTitleCloseButton.cloneNode(true);
+	castTranscriptTitle.children[2].children[6].appendChild(castTranscriptTitleCloseButton);  // NOTE: node has to be added first before we can modify its properties
+
+	
 
 	// Create cast transcript panel's content
-	const transcriptContent = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript content");
+	const transcriptContent = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript content");
 	if (transcriptContent === null) {
 	   return null;
 	}
 	const castTranscriptContent = transcriptContent.cloneNode(true);
 	castTranscriptPanel.children[1].appendChild(castTranscriptContent);  // NOTE: node has to be added first before we can modify its properties
 
-	const transcriptBody = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-search-panel-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript search panel");
+	const transcriptBody = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-search-panel-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript search panel");
 	if (transcriptBody === null) {
 	   return null;
 	}
 	const castTranscriptBody = transcriptBody.cloneNode(true);
 	castTranscriptContent.children[1].appendChild(castTranscriptBody);  // NOTE: node has to be added first before we can modify its properties
 
-	const transcriptSegments = await selectWithLog("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-segment-list-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript segment list");
+	const transcriptSegments = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-segment-list-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript segment list");
 	if (transcriptSegments === null) {
 	   return null;
 	}
 	const castTranscriptSegments = transcriptSegments.cloneNode(true);
 	castTranscriptBody.children[1].appendChild(castTranscriptSegments);  // NOTE: node has to be added first before we can modify its properties
-
+	*/
+	
 	castTranscriptPanel.setAttribute("status", "initialized");
 	return castTranscriptPanel;
 }
 
-const populateTranscript = async (transcriptSegments: HTMLElement) => {
-	const segmentsContainer = transcriptSegments.querySelector("#segments-container");
-	setSegments(segmentsContainer, null);
+const populateCastTranscript = (segmentsContainer: HTMLElement) => {
+	setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
 
-	const response = await fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
+	fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
 	       headers: { Test: "test" },
 	       method: "get"
+	}).then((response) => {
+	       if (response.status == 200) {
+		      return response.json();
+	       } else {
+	              throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText}`);
+	       }
+	}).then((responseJson) => {
+	       setSegments(segmentsContainer, responseJson.transcription.chunks);
+	}).catch((error) => {
+	       let publicErrorMsg = error.message;
+	       let debugErrorMsg = error.message;
+	       if (error.message.includes("Failed to fetch")) {
+	       	     publicErrorMsg = "Failed to make network connection.";
+	       	     debugErrorMsg = "populateTranscript() error: failed to make network connection. Please double check your internet connections, or if the servers are up.";
+	       }
+	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
+	       setSegments(segmentsContainer, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
 	});
-	const text_response = await response.text();
-	const json_response = JSON.parse(text_response);
-	setSegments(segmentsContainer, json_response);
 }
 
 
-const setSegments = (segmentsContainer: HTMLElement, json_response) => {
+const setSegments = (segmentsContainer: HTMLElement, segmentJsons) => {
        let segmentsHTML = "";
 
-       if (json_response !== null) {
-	   for (let i = 0; i < json_response.transcription.chunks.length; i++) {
-		 const chunk = json_response.transcription.chunks[i];
-		 segmentsHTML += buildSegmentHTML(chunk.text, chunk.timestamp[0], chunk.timestamp[1]);
-	   }
-       } else {
-           segmentsHTML = buildSegmentHTML("Loading...", -1, -1);
+       for (let i = 0; i < segmentJsons.length; i++) {
+	     const chunk = segmentJsons[i];
+	     segmentsHTML += buildSegmentHTML(chunk.text, chunk.timestamp[0], chunk.timestamp[1]);
        }
        
        segmentsContainer.innerHTML = trustedPolicy.createHTML(segmentsHTML);
@@ -241,29 +279,11 @@ const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timest
 	return `<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}" caption="${caption}"><div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true"><div class="segment-timestamp style-scope ytd-transcript-segment-renderer">${start_str_digits}</div></div><dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if><yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">${caption}</yt-formatted-string><dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>\n</div>`;
 }
 
-const castTranscriptAction = async () => {
-
-
-	const castTranscriptPanel = await loadCastTranscriptPanel();
-        castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED");
-	
-	
-	
-	/*
-	let transcript_content = transcript_panel.querySelector("ytd-transcript-renderer");
-	let cast_transcript_content = transcript_content.cloneNode(true);
-	cast_transcript_content.setAttribute("panel-target-id", "engagement-panel-casted-transcript");
-	cast_transcript_content.id = "casted-transcript-content";
-	cast_transcript_panel.children[1].appendChild(cast_transcript_content);
-	*/
-
-	let castedTranscriptButton = document.querySelector("#above-the-fold #title");
-	castedTranscriptButton.textContent = "test0";
-	let test = createStyledElement({
-		 elementType: "div"
-	});
-	test.textContent = "test1";
-	castedTranscriptButton.appendChild(test);
+export const castTranscriptButtonClickerListener = () => {
+        alert("1");
+	Object.keys(id_2_waitSelectMetadata).forEach((id) => Object.keys(id_2_waitSelectMetadata[id]).forEach((prop) => console.log(`${prop} => ${id_2_waitSelectMetadata[id][prop]}`)));
+        loadCastTranscriptPanel().then(castTranscriptPanel => castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"));
+	console.log("waitSelectMetadata:");
 }
 
 export const addCastTranscriptButton: AddButtonFunction = async () => {
@@ -275,9 +295,6 @@ export const addCastTranscriptButton: AddButtonFunction = async () => {
 			}
 		}
 	} = await waitForSpecificMessage("options", "request_data", "content");
-	function castTranscriptButtonClickerListener() {
-		 castTranscriptAction();
-	}
 	await addFeatureButton(
 		"castTranscriptButton",
 		castTranscriptButtonPlacement,

@@ -841,7 +841,66 @@ export function timeStringToSeconds(timeString: string): number {
 	return seconds;
 }
 
-export const selectWithLog = async (selector: string, awaitBeforeSelect: boolean, errorMsg: string) => {
+export type WaitSelectStatus = "waiting" | "done" | "timedOut";
+export type WaitSelectMetadata = {
+       id: number,
+       root: HTMLElement,
+       selector: string,
+       description: string,
+       status: WaitSelectStatus,
+       observer: MutationObserver | null,
+       result: HTMLElement | null,
+}
+export var id_2_waitSelectMetadata = {};
+var waitSelectIdCounter = 0;
+export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?: number, debug_description?: string) : Promise<WaitSelectMetadata> => {
+	const id = waitSelectIdCounter;
+	waitSelectIdCounter++;
+	
+	id_2_waitSelectMetadata[id] = {
+		id: id,
+		root: root,
+		selector: selector,
+		description: debug_description,
+		status: "waiting",
+		observer: null,
+		result: null
+	};
+
+        return new Promise<HTMLElement, HTMLElement, string>((resolve, reject) => {
+	        /*
+		const observer = new MutationObserver(() => {
+			_waitSelect(id, root, selector, resolve);
+		});
+		id_2_waitSelectMetadata[id].observer = observer;
+		id_2_waitSelectMetadata[id].observer.observe(root, { childList: true, subtree: true });
+		*/
+		
+		_waitSelect(id, root, selector, resolve);  // If element already exists, mutation observer won't pick it up, so always call once manually
+		
+		if (timeoutMs !== undefined && timeoutMs !== null && timeoutMs > 0) {
+		       window.setTimeout(()=>{
+			       if (id_2_waitSelectMetadata[id].status === "waiting") {
+			           id_2_waitSelectMetadata[id].status === "timedOut";
+				   reject(id_2_waitSelectMetadata[i]);
+			       }
+		       },timeoutMs);
+		}
+	});
+}
+
+const _waitSelect = (id: number, root: HTMLElement, selector: string, resolve: (metadata: WaitSelectMetadata) => void) => {
+	// Get the element that matches the selector.
+	const element = root.querySelector(selector);
+	if (element && id_2_waitSelectMetadata[id].status === "waiting") {
+		id_2_waitSelectMetadata[id].result = element;
+		id_2_waitSelectMetadata[id].status = "done";
+		if (id_2_waitSelectMetadata[id].observer) id_2_waitSelectMetadata[id].observer.disconnect();
+		resolve(id_2_waitSelectMetadata[id]);
+	}
+}
+
+export const safeSelect = async (selector: string, awaitBeforeSelect: boolean, errorMsg: string) => {
         if (awaitBeforeSelect) {
 	        await waitForAllElements([selector]);
 	}

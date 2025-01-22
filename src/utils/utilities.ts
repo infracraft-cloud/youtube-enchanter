@@ -868,13 +868,11 @@ export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?
 	};
 
         return new Promise<HTMLElement, HTMLElement, string>((resolve, reject) => {
-	        /*
 		const observer = new MutationObserver(() => {
 			_waitSelect(id, root, selector, resolve);
 		});
 		id_2_waitSelectMetadata[id].observer = observer;
 		id_2_waitSelectMetadata[id].observer.observe(root, { childList: true, subtree: true });
-		*/
 		
 		_waitSelect(id, root, selector, resolve);  // If element already exists, mutation observer won't pick it up, so always call once manually
 		

@@ -5,7 +5,7 @@ import { getFeatureIcon } from "@/src/icons";
 import eventManager from "@/src/utils/EventManager";
 import { id_2_waitSelectMetadata, waitForAllElements, waitForSpecificMessage } from "@/src/utils/utilities";
 
-import { browserColorLog, createStyledElement, safeSelect, waitSelect } from "@/src/utils/utilities";
+import { browserColorLog, createStyledElement, waitSelect } from "@/src/utils/utilities";
 import { trustedPolicy} from "@/src/pages/embedded";
 
 /*
@@ -39,7 +39,7 @@ rootElement.innerHTML = policy.createHTML("...");
 
 const loadCastTranscriptPanel = async () => {
 	let ret = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
-	if (ret === null || ret.getAttribute("status") !== "done") {
+	if (ret === null || ret.getAttribute("status") === "initializing") {
 	    // Cast Transcript panel hasn't been fully built yet, so build it from scratch
 
 	    // First, load the (regular) transcript panel, so that we can copy its style and structure
@@ -74,7 +74,9 @@ const loadCastTranscriptPanel = async () => {
 		  }
 
 		  const castTranscriptSegments = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
-		  if (castTranscriptSegments) populateCastTranscript(castTranscriptSegments);
+		  if (castTranscriptSegments) populateCastTranscript(castTranscriptSegments).then(() => {
+		     castTranscriptPanel.setAttribute("status", "done");
+		  });
 
 		  return castTranscriptPanel;
 	    });
@@ -130,49 +132,6 @@ const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 
 	await titleBuilder;
 	await contentBuilder;
-
-	/*
-	// Create cast transcript panel's title
-	const transcriptTitle = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript title");
-	if (transcriptTitle === null) {
-	   return null;
-	}
-	const castTranscriptTitle = transcriptTitle.cloneNode(true);
-	castTranscriptPanel.children[0].appendChild(castTranscriptTitle);  // NOTE: node has to be added first before we can modify its properties
-	castTranscriptTitle.querySelector("#title-text").textContent = "Casted Transcript";
-	castTranscriptTitle.querySelector("#icon").style.width = "0px";
-
-	const transcriptTitleCloseButton = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-engagement-panel-title-header-renderer #visibility-button ytd-button-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript title close button");
-	if (transcriptTitleCloseButton === null) {
-	   return null;
-	}
-	const castTranscriptTitleCloseButton = transcriptTitleCloseButton.cloneNode(true);
-	castTranscriptTitle.children[2].children[6].appendChild(castTranscriptTitleCloseButton);  // NOTE: node has to be added first before we can modify its properties
-
-	
-
-	// Create cast transcript panel's content
-	const transcriptContent = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript content");
-	if (transcriptContent === null) {
-	   return null;
-	}
-	const castTranscriptContent = transcriptContent.cloneNode(true);
-	castTranscriptPanel.children[1].appendChild(castTranscriptContent);  // NOTE: node has to be added first before we can modify its properties
-
-	const transcriptBody = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-search-panel-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript search panel");
-	if (transcriptBody === null) {
-	   return null;
-	}
-	const castTranscriptBody = transcriptBody.cloneNode(true);
-	castTranscriptContent.children[1].appendChild(castTranscriptBody);  // NOTE: node has to be added first before we can modify its properties
-
-	const transcriptSegments = await safeSelect("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript] ytd-transcript-renderer ytd-transcript-segment-list-renderer", true, "buildCastTranscriptPanel() error: could not find OpenTranscript segment list");
-	if (transcriptSegments === null) {
-	   return null;
-	}
-	const castTranscriptSegments = transcriptSegments.cloneNode(true);
-	castTranscriptBody.children[1].appendChild(castTranscriptSegments);  // NOTE: node has to be added first before we can modify its properties
-	*/
 	
 	castTranscriptPanel.setAttribute("status", "initialized");
 	return castTranscriptPanel;
@@ -280,7 +239,6 @@ const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timest
 }
 
 export const castTranscriptButtonClickerListener = () => {
-        alert("1");
 	Object.keys(id_2_waitSelectMetadata).forEach((id) => Object.keys(id_2_waitSelectMetadata[id]).forEach((prop) => console.log(`${prop} => ${id_2_waitSelectMetadata[id][prop]}`)));
         loadCastTranscriptPanel().then(castTranscriptPanel => castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"));
 	console.log("waitSelectMetadata:");

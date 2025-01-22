@@ -118,7 +118,7 @@ if (typeof window.trustedTypes == 'undefined') window.trustedTypes = {createPoli
 export const trustedPolicy = trustedTypes.createPolicy('youtube-enchanter', {
   createHTML: (string, sink) => {
     return string;
-  }
+  },
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -165,6 +165,16 @@ function shouldEnableFeaturesFuncReturn() {
 const enableFeatures = () => {
 	browserColorLog(`Enabling features...`, "FgMagenta");
 	void (async () => {
+		// NOTE(Kevin): Youtube javascript for some reason unreliably fires this specific function multiple times only under
+		// certain condition I am not sure why (it seems to be related to how many assync functions are in this extension)
+		// so we move this "isFirstLoad" check away from the DOM Content Load even listener, and into this function instead.
+	        if (!isFirstLoad) return;
+		isFirstLoad = false;
+		
+		// We need to wait for the main video player to load before we can proceed, which can be either
+		// "div#player-container.ytd-watch-grid" or "div#player-container.ytd-watch-flexy"
+		await Promise.any([waitForAllElements(["div#player-container.ytd-watch-grid"]), waitForAllElements(["div#player-container.ytd-watch-flexy"])]);
+		
 		const {
 			data: {
 				options: { button_placements }
@@ -285,13 +295,10 @@ window.addEventListener("DOMContentLoaded", function () {
 		} = response;
 		const i18nextInstance = await i18nService(language);
 		window.i18nextInstance = i18nextInstance;
-		if (isFirstLoad) {
-			enableFeatures();
-			handleSoftNavigate();
-		} else if (!isFirstLoad) {
-			handleSoftNavigate();
-		}
-		isFirstLoad = false;
+		
+		enableFeatures();
+		handleSoftNavigate();
+		
 		/**
 		 * Listens for the "yte-message-from-youtube" event and handles incoming messages from the YouTube page.
 		 *

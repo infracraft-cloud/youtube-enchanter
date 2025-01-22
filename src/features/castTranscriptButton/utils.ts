@@ -93,6 +93,7 @@ const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 	castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED");
 	castTranscriptPanel.setAttribute("status", "initializing");
 	castTranscriptPanel.style.visibility = "";
+	castTranscriptPanel.style.order = "-5";
 
 
 	let castTranscriptTitle = null;
@@ -140,7 +141,7 @@ const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 const populateCastTranscript = (segmentsContainer: HTMLElement) => {
 	setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
 
-	fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
+	return fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
 	       headers: { Test: "test" },
 	       method: "get"
 	}).then((response) => {

@@ -868,7 +868,7 @@ export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?
 	};
 
 	browserColorLog(`waitSelect for ${selector}`, "FgBlue");
-        return new Promise<HTMLElement, HTMLElement, string>((resolve, reject) => {
+        return new Promise<HTMLElement>((resolve, reject) => {
 		const observer = new MutationObserver(() => {
 			_waitSelect(id, root, selector, resolve);
 		});

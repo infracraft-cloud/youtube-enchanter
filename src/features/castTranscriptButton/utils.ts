@@ -37,54 +37,42 @@ rootElement.innerHTML = policy.createHTML("...");
 // const json = JSON.parse(data);
 */
 
-const loadCastTranscriptPanel = async () => {
-	let ret = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
-	if (ret === null || ret.getAttribute("status") === "initializing") {
-	    // Cast Transcript panel hasn't been fully built yet, so build it from scratch
+const loadCastTranscriptPanel = async () : Promise<HTMLElement> => {
+        return new Promise<HTMLElement>((resolve, reject) => {
+		let ret = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
+		if (ret === null || ret.getAttribute("status") === "initializing") {
+		    let panels = document.querySelector("#primary #below #panels");
+		    if (!panels) {
+			let below = document.querySelector("#primary #below");
+			if (!below) {
+			        reject(new Error("Could not find document.querySelector('#primary #below') in the web page, which is the required container for castTranscriptPanel!"));
+			}
 
-	    // First, load the (regular) transcript panel, so that we can copy its style and structure
-	    let transcriptPanel = null;
-	    let loadTranscript = null;
-	    let prevVisibility = null;
-	    return waitSelect(document, "ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-searchable-transcript]").then((transcriptPanel) => {
-	    
-		  // If the OpenTranscript panel has not been fully loaded yet (by checking the segments content), load it
-		  loadTranscript = (transcriptPanel.querySelector("ytd-transcript-renderer ytd-transcript-search-panel-renderer ytd-transcript-segment-list-renderer") === null);
-		  prevVisibility = "";
-		  
-		  if (loadTranscript) {
-			// Make transcript panel hidden so the viewer can't see this quick load/unload behavior
-			prevVisibility = transcriptPanel.style.display;
-			transcriptPanel.style.visibility = "hidden";
+			panels = createStyledElement({
+			       classlist: ["style-scope", "ytd-watch-flexy"],
+			       elementId: "panels",
+			       elementType: "div"
+			});
 
-			const transcriptButton = document.querySelector<HTMLButtonElement>("ytd-video-description-transcript-section-renderer button");
-			if (transcriptButton) transcriptButton.click();
-		  }
+			below.prepend(panels);
+		    }
 
+		    // Transcript panel hasn't been fully built yet, so build it from scratch
+		    return buildCastTranscriptPanel(panels).then((castTranscriptPanel) => {		    
+			  // Launch a new promise chain, since loading the transcript segments requires an API call and can take a very long time
+			  castTranscript(castTranscriptPanel).then(() => {
+			      castTranscriptPanel.setAttribute("status", "done");
+			  });
 
-		  // While we have the transcript panel up, build the cast transcript panel by copying its structure
-		  return buildCastTranscriptPanel(transcriptPanel);
-	    }).then((castTranscriptPanel) => {
-		  if (loadTranscript) {
-			// Close the transcript panel. Remember to revert its visibility
-			const closeTranscript = document.querySelector('button[aria-label="Close transcript"]')
-			if (closeTranscript) closeTranscript.click();
-			transcriptPanel.style.visibility = prevVisibility;
-		  }
-
-		  const castTranscriptSegments = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
-		  if (castTranscriptSegments) populateCastTranscript(castTranscriptSegments).then(() => {
-		     castTranscriptPanel.setAttribute("status", "done");
-		  });
-
-		  return castTranscriptPanel;
-	    });
-	}
-	
-        return ret;
+			  return castTranscriptPanel;
+		    });
+		} else {
+		    return ret;
+		}
+	});
 }
 
-const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
+const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	const placeholder = createStyledElement({
 		elementType: "div",
 	});
@@ -93,7 +81,7 @@ const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 	      </ytd-engagement-panel-section-list-renderer>
 	`);
 	const castTranscriptPanel = placeholder.children[0];
-	transcriptPanel.after(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
+	panels.appendChild(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
 
 
 	const headerBuilder = waitCreateHTML(castTranscriptPanel.querySelector("#header"),  `
@@ -109,9 +97,7 @@ const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 		     <div id="title-container" class="style-scope ytd-engagement-panel-title-header-renderer">
 			 <h2 id="title" class="style-scope ytd-engagement-panel-title-header-renderer" aria-label="Transcript" tabindex="-1">
 			     <yt-formatted-string id="title-text" ellipsis-truncate="" class="style-scope ytd-engagement-panel-title-header-renderer" ellipsis-truncate-styling="" title="Transcript">
-				 <!--yte.waitCreateHTML.startFragment=\`yt-formatted-string#title-text\`-->
 				 Transcript
-				 <!--yte.waitCreateHTML.endFragment=\`yt-formatted-string#title-text\`-->
 			     </yt-formatted-string>
 			     <yt-formatted-string id="contextual-info" class="style-scope ytd-engagement-panel-title-header-renderer" is-empty="function(){var e=Ha.apply(0,arguments);a.loggingStatus.currentExternalCall=b;a.loggingStatus.bypassProxyController=!0;var g,k=((g=a.is)!=null?g:a.tagName).toLowerCase();bz(k,b,&quot;PROPERTY_ACCESS_CALL_EXTERNAL&quot;);var m;g=(m=c!=null?c:d[b])==null?void 0:m.call.apply(m,[d].concat(la(e)));a.loggingStatus.currentExternalCall=void 0;a.loggingStatus.bypassProxyController=!1;return g}" hidden=""><!--css-build:shady--><!--css-build:shady--><yt-attributed-string class="style-scope yt-formatted-string"></yt-attributed-string></yt-formatted-string>
 			 </h2>
@@ -199,496 +185,44 @@ const buildCastTranscriptPanel = async (transcriptPanel: HTMLElement) => {
 		 <!--yte.waitCreateHTML.endFragment=\`ytd-engagement-panel-title-header-renderer\`-->
 	     </ytd-engagement-panel-title-header-renderer>
 	`).then((castHeader) => {
-	      castHeader.querySelector("#title-text").textContent = "Casted Transcript";
-	});;
-
-	
-	const contentBuilder = waitSelect(castTranscriptPanel, "#content").then((content) => {
-	      content.innerHTML = trustedPolicy.createHTML(`
-	              <ytd-transcript-renderer class="style-scope ytd-engagement-panel-section-list-renderer" panel-content-visible="" panel-target-id="engagement-panel-searchable-transcript">
-		      </ytd-transcrpt-renderer>
-	      `);
-	      
-	      return waitSelect(content, "ytd-transcript-renderer");
-	}).then((transcriptRenderer) => {
-	      transcriptRenderer.innerHTML = trustedPolicy.createHTML(`
-	      <!--css-build:shady--><!--css-build:shady--><div id="body" class="style-scope ytd-transcript-renderer"></div>
-<div id="content" class="style-scope ytd-transcript-renderer"><ytd-transcript-search-panel-renderer class="style-scope ytd-transcript-renderer"><!--css-build:shady--><!--css-build:shady--><div id="header" class="style-scope ytd-transcript-search-panel-renderer"></div>
-<div id="body" class="style-scope ytd-transcript-search-panel-renderer"><ytd-transcript-segment-list-renderer class="style-scope ytd-transcript-search-panel-renderer"><!--css-build:shady--><!--css-build:shady--><div id="segments-container" class="style-scope ytd-transcript-segment-list-renderer"><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 second -[ Sighs ]">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:01
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-[ Sighs ]</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer active" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="4 seconds Morning, Dwight.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:04
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Morning, Dwight.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container="" mouse-over=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="9 seconds -Who are you?">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:09
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-Who are you?</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="10 seconds -[ Scoffs ]
-Who am I? I'm Jim.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:10
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-[ Scoffs ]
-Who am I? I'm Jim.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="13 seconds We've been working together
-for 12 years.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:13
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">We've been working together
-for 12 years.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="16 seconds Weird joke, Dwight.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:16
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Weird joke, Dwight.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="17 seconds -You're not Jim.
-Jim's not Asian.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:17
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-You're not Jim.
-Jim's not Asian.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="20 seconds -You seriously never noticed?">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:20
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-You seriously never noticed?</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="21 seconds Hey. Hats off to you
-for not seeing race.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:21
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Hey. Hats off to you
-for not seeing race.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="26 seconds -All right, then, Jim.
-Uh, why don't you tell me">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:26
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-All right, then, Jim.
-Uh, why don't you tell me</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="29 seconds about that sale
-that you made yesterday?">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:29
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">about that sale
-that you made yesterday?</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="32 seconds -Uh, Wellington Systems?">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:32
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-Uh, Wellington Systems?</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="34 seconds Sold them 10 cases
-of 24-pound letter stock.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:34
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Sold them 10 cases
-of 24-pound letter stock.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="36 seconds Or were you talking about
-Krieger-Murphy?">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:36
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Or were you talking about
-Krieger-Murphy?</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="38 seconds Because I didn't
-close that one yet,">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:38
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Because I didn't
-close that one yet,</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="40 seconds but I'm hoping I've got
-a voicemail from Paul Krieger">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:40
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">but I'm hoping I've got
-a voicemail from Paul Krieger</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="42 seconds waiting for me.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:42
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">waiting for me.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="45 seconds -Please enter your password.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:45
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-Please enter your password.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="52 seconds You have one new message.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:52
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">You have one new message.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="54 seconds -How did you know? No! No, no.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:54
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-How did you know? No! No, no.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="57 seconds That is sensitive information.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:57
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">That is sensitive information.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="58 seconds Only for employees,
-not outsiders!">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      0:58
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Only for employees,
-not outsiders!</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute -Dwight, cut it out.
-I'm trying to work.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:00
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-Dwight, cut it out.
-I'm trying to work.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 2 seconds -You don't work here!
-You're not Jim!">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:02
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-You don't work here!
-You're not Jim!</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 3 seconds -Jim, I got us that dinner
-reservation -- Grico's, 7:30.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:03
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-Jim, I got us that dinner
-reservation -- Grico's, 7:30.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 7 seconds -Oh, great. Can't wait.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:07
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-Oh, great. Can't wait.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 11 seconds Jim's at the dentist
-this morning,">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:11
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Jim's at the dentist
-this morning,</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 13 seconds and Steve is
-an actor friend of ours.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:13
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">and Steve is
-an actor friend of ours.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 15 seconds -I don't know who you are,
-but you are not Jim.">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:15
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">-I don't know who you are,
-but you are not Jim.</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 19 seconds This is Jim!">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:19
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">This is Jim!</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 26 seconds Oh, my --">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:26
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Oh, my --</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer><ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="1 minute, 28 seconds Oh, d-- Oh, how did -- Hunh!">
-  <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-    <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
-      1:28
-    </div>
-  </div>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-  <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">Oh, d-- Oh, how did -- Hunh!</yt-formatted-string>
-  <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-</div>
-</ytd-transcript-segment-renderer></div>
-<div id="message-container" class="style-scope ytd-transcript-segment-list-renderer" hidden="">
-  <yt-formatted-string id="no-results" class="style-scope ytd-transcript-segment-list-renderer">No results found</yt-formatted-string>
-</div></ytd-transcript-segment-list-renderer></div>
-<div id="error-container" class="style-scope ytd-transcript-search-panel-renderer" hidden="">
-  <tp-yt-paper-button id="retry-button" class="style-scope ytd-transcript-search-panel-renderer" style-target="host" role="button" tabindex="0" animated="" elevation="0" aria-disabled="false"><!--css-build:shady--><!--css-build:shady-->
-    <yt-formatted-string class="style-scope ytd-transcript-search-panel-renderer">TAP TO RETRY</yt-formatted-string>
-  
-</tp-yt-paper-button>
-</div>
-<div class="spinner-container style-scope ytd-transcript-search-panel-renderer" hidden="">
-  <tp-yt-paper-spinner class="style-scope ytd-transcript-search-panel-renderer" aria-hidden="true" aria-label="loading"><!--css-build:shady--><!--css-build:shady--><div id="spinnerContainer" class="  style-scope tp-yt-paper-spinner">
-  <div class="spinner-layer layer-1 style-scope tp-yt-paper-spinner">
-    <div class="circle-clipper left style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-    <div class="circle-clipper right style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-  </div>
-
-  <div class="spinner-layer layer-2 style-scope tp-yt-paper-spinner">
-    <div class="circle-clipper left style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-    <div class="circle-clipper right style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-  </div>
-
-  <div class="spinner-layer layer-3 style-scope tp-yt-paper-spinner">
-    <div class="circle-clipper left style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-    <div class="circle-clipper right style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-  </div>
-
-  <div class="spinner-layer layer-4 style-scope tp-yt-paper-spinner">
-    <div class="circle-clipper left style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-    <div class="circle-clipper right style-scope tp-yt-paper-spinner">
-      <div class="circle style-scope tp-yt-paper-spinner"></div>
-    </div>
-  </div>
-</div>
-</tp-yt-paper-spinner>
-</div>
-<div id="footer" class="style-scope ytd-transcript-search-panel-renderer"><ytd-transcript-footer-renderer class="style-scope ytd-transcript-search-panel-renderer"><!--css-build:shady--><!--css-build:shady--><div id="menu" class="style-scope ytd-transcript-footer-renderer"><yt-sort-filter-sub-menu-renderer class="style-scope ytd-transcript-footer-renderer"><!--css-build:shady--><!--css-build:shady--><tp-yt-paper-tooltip class="style-scope yt-sort-filter-sub-menu-renderer" role="tooltip" tabindex="-1" aria-label="tooltip"><!--css-build:shady--><!--css-build:shady--><div id="tooltip" class="hidden style-scope tp-yt-paper-tooltip" style-target="tooltip">
-  
-</div>
-</tp-yt-paper-tooltip>
-<yt-dropdown-menu class="style-scope yt-sort-filter-sub-menu-renderer has-items" modern-buttons=""><!--css-build:shady--><!--css-build:shady--><tp-yt-paper-menu-button dynamic-align="" expand-sizing-target-for-scrollbars="" class="style-scope yt-dropdown-menu" role="group" aria-haspopup="true" horizontal-align="left" vertical-align="top" aria-disabled="false"><!--css-build:shady--><!--css-build:shady--><div id="trigger" class="style-scope tp-yt-paper-menu-button">
-  <tp-yt-paper-button id="label" class="dropdown-trigger style-scope yt-dropdown-menu" slot="dropdown-trigger" style-target="host" role="button" tabindex="0" animated="" elevation="0" aria-disabled="false" aria-expanded="false"><!--css-build:shady--><!--css-build:shady-->
-    <dom-if class="style-scope yt-dropdown-menu"><template is="dom-if"></template></dom-if>
-    
-      <div id="label-text" style-target="label-text" class="style-scope yt-dropdown-menu">English</div>
-      <yt-icon id="label-icon" icon="expand" class="style-scope yt-dropdown-menu"><!--css-build:shady--><!--css-build:shady--><span class="yt-icon-shape style-scope yt-icon yt-spec-icon-shape"><div style="width: 100%; height: 100%; display: block; fill: currentcolor;"><svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;"><path d="m18 9.28-6.35 6.35-6.37-6.35.72-.71 5.64 5.65 5.65-5.65z"></path></svg></div></span></yt-icon>
-    <dom-if class="style-scope yt-dropdown-menu"><template is="dom-if"></template></dom-if>
-  
-</tp-yt-paper-button>
-</div>
-
-<tp-yt-iron-dropdown id="dropdown" class="style-scope tp-yt-paper-menu-button" horizontal-align="left" vertical-align="top" aria-disabled="false" aria-hidden="true" style="outline: none; display: none;"><!--css-build:shady--><!--css-build:shady--><div id="contentWrapper" class="style-scope tp-yt-iron-dropdown">
-  <div slot="dropdown-content" class="dropdown-content style-scope tp-yt-paper-menu-button">
-    <tp-yt-paper-listbox id="menu" class="dropdown-content style-scope yt-dropdown-menu" slot="dropdown-content" role="listbox" tabindex="0"><!--css-build:shady--><!--css-build:shady-->
-    
-      <a class="yt-simple-endpoint style-scope yt-dropdown-menu iron-selected" aria-selected="true" tabindex="0">
-        <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false"><!--css-build:shady--><!--css-build:shady-->
-          <tp-yt-paper-item-body class="style-scope yt-dropdown-menu"><!--css-build:shady--><!--css-build:shady-->
-            <div id="item-with-badge" class="style-scope yt-dropdown-menu">
-              <div class="item style-scope yt-dropdown-menu">English
-                <span class="notification style-scope yt-dropdown-menu" hidden=""></span>
-              </div>
-              <ytd-badge-supported-renderer class="style-scope yt-dropdown-menu" disable-upgrade="" hidden="">
-              </ytd-badge-supported-renderer>
-            </div>
-            <div secondary="" id="subtitle" class="style-scope yt-dropdown-menu" hidden="">
-              
-            </div>
-          
-</tp-yt-paper-item-body>
-          <yt-reload-continuation class="style-scope yt-dropdown-menu">
-          </yt-reload-continuation>
-        
-</tp-yt-paper-item>
-      </a>
-    
-      <a class="yt-simple-endpoint style-scope yt-dropdown-menu" tabindex="-1" aria-selected="false">
-        <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false"><!--css-build:shady--><!--css-build:shady-->
-          <tp-yt-paper-item-body class="style-scope yt-dropdown-menu"><!--css-build:shady--><!--css-build:shady-->
-            <div id="item-with-badge" class="style-scope yt-dropdown-menu">
-              <div class="item style-scope yt-dropdown-menu">English (auto-generated)
-                <span class="notification style-scope yt-dropdown-menu" hidden=""></span>
-              </div>
-              <ytd-badge-supported-renderer class="style-scope yt-dropdown-menu" disable-upgrade="" hidden="">
-              </ytd-badge-supported-renderer>
-            </div>
-            <div secondary="" id="subtitle" class="style-scope yt-dropdown-menu" hidden="">
-              
-            </div>
-          
-</tp-yt-paper-item-body>
-          <yt-reload-continuation class="style-scope yt-dropdown-menu">
-          </yt-reload-continuation>
-        
-</tp-yt-paper-item>
-      </a>
-    <dom-repeat id="repeat" class="style-scope yt-dropdown-menu"><template is="dom-repeat"></template></dom-repeat>
-  
-</tp-yt-paper-listbox>
-  </div>
-</div>
-</tp-yt-iron-dropdown>
-</tp-yt-paper-menu-button>
-</yt-dropdown-menu>
-<div id="notification" class="style-scope yt-sort-filter-sub-menu-renderer" hidden=""></div>
-	      `);
+	     // For some reason due to dynamic scripts, we must set the text content of the title after we create all the elements,
+	     // otherwise the scripts would modify the title to become empty.
+	     castHeader.querySelector("#title-text").textContent = "Casted Transcript";
 	});
+
+	const contentBuilder = waitCreateHTML(castTranscriptPanel.querySelector("#content"),  `
+	     <ytd-transcript-renderer class="style-scope ytd-engagement-panel-section-list-renderer" panel-content-visible="" panel-target-id="engagement-panel-searchable-transcript">
+		 <!--css-build:shady-->
+		 <!--css-build:shady-->
+		 <div id="body" class="style-scope ytd-transcript-renderer"></div>
+		 <div id="content" class="style-scope ytd-transcript-renderer">
+		     <ytd-transcript-search-panel-renderer class="style-scope ytd-transcript-renderer">
+		         <!--css-build:shady-->
+			 <!--css-build:shady-->
+			 <div id="header" class="style-scope ytd-transcript-search-panel-renderer"></div>
+		         <div id="body" class="style-scope ytd-transcript-search-panel-renderer">
+			     <ytd-transcript-segment-list-renderer class="style-scope ytd-transcript-search-panel-renderer">
+			         <!--css-build:shady-->
+				 <!--css-build:shady-->
+				 <div id="segments-container" class="style-scope ytd-transcript-segment-list-renderer"></div>
+		                 <div id="message-container" class="style-scope ytd-transcript-segment-list-renderer" hidden="">
+		                     <yt-formatted-string id="no-results" class="style-scope ytd-transcript-segment-list-renderer">No results found</yt-formatted-string>
+		                 </div>
+		            </ytd-transcript-segment-list-renderer>
+			</div>
+		        <div id="error-container" class="style-scope ytd-transcript-search-panel-renderer" hidden="">
+		            <tp-yt-paper-button id="retry-button" class="style-scope ytd-transcript-search-panel-renderer" style-target="host" role="button" tabindex="0" animated="" elevation="0" aria-disabled="false">
+			        <!--css-build:shady-->
+				<!--css-build:shady-->
+		                <yt-formatted-string class="style-scope ytd-transcript-search-panel-renderer">TAP TO RETRY</yt-formatted-string>
+ 		            </tp-yt-paper-button>
+		        </div>
+			<div id="footer" class="style-scope ytd-transcript-search-panel-renderer"></div>
+                     </ytd-transcript-search-panel-renderer>
+		 </div>
+		 <div id="footer" class="style-scope ytd-transcript-renderer"></div>
+	     </ytd-transcrpt-renderer>
+	`);
 
 	await headerBuilder;
 	await contentBuilder;
@@ -697,69 +231,10 @@ but you are not Jim.</yt-formatted-string>
 	return castTranscriptPanel;
 }
 
-const buildCastTranscriptPanel2 = async (transcriptPanel: HTMLElement) => {
-	// Create cast transcript panel
-	const castTranscriptPanel = transcriptPanel.cloneNode(true);
-	transcriptPanel.after(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
-	castTranscriptPanel.setAttribute("target-id", "engagement-panel-cast-transcript");
-	castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED");
-	castTranscriptPanel.setAttribute("status", "initializing");
-	castTranscriptPanel.style.visibility = "";
-	castTranscriptPanel.style.order = "-5";
-
-
-	let castTranscriptTitle = null;
-	let castCloseButtonRenderer = null;
-	const titleBuilder = waitSelect(transcriptPanel, "ytd-engagement-panel-title-header-renderer").then((titleMetadata) => {
-	      const transcriptTitle = titleMetadata.result;
-	      castTranscriptTitle = transcriptTitle.cloneNode(true);
-	      castTranscriptPanel.children[0].appendChild(castTranscriptTitle);  // NOTE: node has to be added first before we can modify its properties
-	      castTranscriptTitle.querySelector("#title-text").textContent = "Casted Transcript";
-	      castTranscriptTitle.querySelector("#icon").style.width = "0px";
-
-	      return waitSelect(transcriptTitle, "#visibility-button ytd-button-renderer");
-	}).then((closeButtonRendererMetadata) => {
-	      const closeButtonRenderer = closeButtonRendererMetadata.result;
-	      castCloseButtonRenderer = closeButtonRenderer.cloneNode(true);
-	      castTranscriptTitle.children[2].children[6].appendChild(castCloseButtonRenderer);  // NOTE: node has to be added first before we can modify its properties
-	      
-	      return waitSelect(closeButtonRenderer, "button[aria-label='Close transcript']");
-	}).then((buttonMetadata) => {
-	      const button = buttonMetadata.result;
-	      const castButton = button.cloneNode(true);
-	      castCloseButtonRenderer.children[0].appendChild(castButton);
-
-	      return waitSelect(castButton, "yt-touch-feedback-shape");
-	});
-
-	let castTranscriptContent = null;
-	let castTranscriptBody = null;
-	const contentBuilder = waitSelect(transcriptPanel, "ytd-transcript-renderer").then((contentMetadata) => {
-	      const transcriptContent = contentMetadata.result;
-	      castTranscriptContent = transcriptContent.cloneNode(true);
-	      castTranscriptPanel.children[1].appendChild(castTranscriptContent);  // NOTE: node has to be added first before we can modify its properties
-
-	      return waitSelect(transcriptContent, "ytd-transcript-search-panel-renderer");
-	}).then((transcriptBodyMetadata) => {
-	      const transcriptBody = transcriptBodyMetadata.result;
-	      castTranscriptBody = transcriptBody.cloneNode(true);
-	      castTranscriptContent.children[1].appendChild(castTranscriptBody);  // NOTE: node has to be added first before we can modify its properties
-
-	      return waitSelect(transcriptBody, "ytd-transcript-segment-list-renderer");
-	}).then((transcriptSegmentsMetadata) => {
-	      const transcriptSegments = transcriptSegmentsMetadata.result;
-	      const castTranscriptSegments = transcriptSegments.cloneNode(true);
-	      castTranscriptBody.children[1].appendChild(castTranscriptSegments);  // NOTE: node has to be added first before we can modify its properties
-	});
-
-	await titleBuilder;
-	await contentBuilder;
+const castTranscript = (castTranscriptPanel: HTMLElement) => {
+        const segmentsContainer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
+	if (!segmentsContainer) throw new Error("castTranscript() error: could not find castTranscriptPanel.querySelector('ytd-transcript-segment-list-renderer #segments-container')!")
 	
-	castTranscriptPanel.setAttribute("status", "initialized");
-	return castTranscriptPanel;
-}
-
-const populateCastTranscript = (segmentsContainer: HTMLElement) => {
 	setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
 
 	return fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
@@ -900,6 +375,36 @@ export const removeCastTranscriptButton: RemoveButtonFunction = async (placement
 };
 
 const newJobRe = new RegExp("<!--\\s*yte.waitCreateHTML.startFragment=`([^`]*)`\\s*-->(.*)<!--\\s*yte.waitCreateHTML.endFragment=`\\1`\\s*-->", "gs");
+/*
+    Ideally we could modify the Youtube HTML in a single pass, but due to the dynamic scripts that run, and that a lot of custom Youtube
+    elements might posibly be isolated iframes, we must create the element.innerHTML in multiple passes. In each pass, we wait for the confirmation
+    that the element was created and written to the DOM before moving to the nxt step.
+
+    In order to do this, in the HTML, mark the sections that should be create in later passes with
+      ..prev HTML snippet
+        <!--yte.waitCreateHTML.startFragment=`<selector>`-->
+	  ..HTML snippet to add to <selector>
+	<!--yte.waitCreateHTML.endFragment=`<selector>`-->
+      ..post HTML snippet
+
+    This way, on the initial pass, the DOM would create
+      ..prev HTML snippet
+      ..post HTML snippet
+    and once this is confirmed to have been created, then on the next step it creates the inner HTML snippet of the element that matches the
+    CSS selector <selector>.
+
+    This can be chained recursively, i.e.
+      ..prev HTML snippet1
+        <!--yte.waitCreateHTML.startFragment=`<selector1>`-->
+	  ..prev HTML snippet2
+	    <!--yte.waitCreateHTML.startFragment=`<selector2>`-->
+	      ..HTML snippet to add to <selector>
+	    <!--yte.waitCreateHTML.endFragment=`<selector2>`-->
+	  ..post HTML snippet2
+	<!--yte.waitCreateHTML.endFragment=`<selector1>`-->
+      ..post HTML snippet1
+    and selector1 would have to be confirmed to be created before creating selector2.
+*/
 const waitCreateHTML = async (root: HTMLElement, html: string) => {
         console.log(`Entering waitCreateHTML with root=${root.tagName} ${root.classList}`);
 	

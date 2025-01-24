@@ -853,7 +853,7 @@ export type WaitSelectMetadata = {
 }
 export var id_2_waitSelectMetadata = {};
 var waitSelectIdCounter = 0;
-export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?: number, debug_description?: string) : Promise<WaitSelectMetadata> => {
+export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?: number, debug_description?: string) : Promise<HTMLElement> => {
 	const id = waitSelectIdCounter;
 	waitSelectIdCounter++;
 	
@@ -867,6 +867,7 @@ export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?
 		result: null
 	};
 
+	browserColorLog(`waitSelect for ${selector}`, "FgBlue");
         return new Promise<HTMLElement, HTMLElement, string>((resolve, reject) => {
 		const observer = new MutationObserver(() => {
 			_waitSelect(id, root, selector, resolve);
@@ -880,6 +881,7 @@ export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?
 		       window.setTimeout(()=>{
 			       if (id_2_waitSelectMetadata[id].status === "waiting") {
 			           id_2_waitSelectMetadata[id].status === "timedOut";
+			           browserColorLog(`waitSelect for ${selector} timed out!`, "FgBlue");
 				   reject(id_2_waitSelectMetadata[i]);
 			       }
 		       },timeoutMs);
@@ -887,14 +889,15 @@ export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?
 	});
 }
 
-const _waitSelect = (id: number, root: HTMLElement, selector: string, resolve: (metadata: WaitSelectMetadata) => void) => {
+const _waitSelect = (id: number, root: HTMLElement, selector: string, resolve: (element: HTMLElement) => void) => {
 	// Get the element that matches the selector.
 	const element = root.querySelector(selector);
 	if (element && id_2_waitSelectMetadata[id].status === "waiting") {
 		id_2_waitSelectMetadata[id].result = element;
 		id_2_waitSelectMetadata[id].status = "done";
+		browserColorLog(`waitSelect for ${selector} found!`, "FgBlue");
 		if (id_2_waitSelectMetadata[id].observer) id_2_waitSelectMetadata[id].observer.disconnect();
-		resolve(id_2_waitSelectMetadata[id]);
+		resolve(element);
 	}
 }
 

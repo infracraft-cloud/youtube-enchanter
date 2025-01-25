@@ -117,7 +117,11 @@ const attachContentListeners = async (castTranscriptPanel: HTMLElement) => {
 	    listenPressed(languageDropdownOption, (mutation) => {
 		 for (const curr of languageDropdownOptions) {
 		     if (curr.isSameNode(mutation.target)) {
-			   curr.parentNode.classList.add("iron-selected"); 
+			   curr.parentNode.classList.add("iron-selected");
+			   const optionText = curr.querySelector("#item-with-badge").textContent.trim();
+			   
+			   const triggerText = languageDropdownTrigger.querySelector("#label-text");
+			   if (triggerText) triggerText.textContent = optionText;
 		     } else {
 			   curr.parentNode.classList.remove("iron-selected");
 		     }

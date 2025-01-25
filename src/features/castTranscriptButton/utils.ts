@@ -5,7 +5,7 @@ import { getFeatureIcon } from "@/src/icons";
 import eventManager from "@/src/utils/EventManager";
 import { id_2_waitSelectMetadata, waitForAllElements, waitForSpecificMessage } from "@/src/utils/utilities";
 
-import { browserColorLog, createStyledElement, waitSelect } from "@/src/utils/utilities";
+import { DEBUG, debug, browserColorLog, createStyledElement, waitSelect } from "@/src/utils/utilities";
 import { trustedPolicy} from "@/src/pages/embedded";
 
 /*
@@ -82,7 +82,6 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	`);
 	const castTranscriptPanel = placeholder.children[0];
 	panels.appendChild(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
-
 
 	const headerBuilder = waitCreateHTML(castTranscriptPanel.querySelector("#header"),  `
 	     <ytd-engagement-panel-title-header-renderer class="style-scope ytd-engagement-panel-section-list-renderer" enable-anchored-panel="" modern-panels=""><!--css-build:shady--><!--css-build:shady--><div id="banner" aria-hidden="true" class="style-scope ytd-engagement-panel-title-header-renderer">
@@ -189,7 +188,7 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	     // otherwise the scripts would modify the title to become empty.
 	     castHeader.querySelector("#title-text").textContent = "Casted Transcript";
 	});
-
+	
 	const contentBuilder = waitCreateHTML(castTranscriptPanel.querySelector("#content"),  `
 	     <ytd-transcript-renderer class="style-scope ytd-engagement-panel-section-list-renderer" panel-content-visible="" panel-target-id="engagement-panel-searchable-transcript">
 		 <!--css-build:shady-->
@@ -249,7 +248,7 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 						        <!--css-build:shady-->
 							<!--css-build:shady-->
 							<dom-if class="style-scope yt-dropdown-menu"><template is="dom-if"></template></dom-if>
-							<div id="label-text" style-target="label-text" class="style-scope yt-dropdown-menu">English</div>
+							<div id="label-text" style-target="label-text" class="style-scope yt-dropdown-menu">Original</div>
 							<yt-icon id="label-icon" icon="expand" class="style-scope yt-dropdown-menu">
 							    <!--css-build:shady-->
 							    <!--css-build:shady-->
@@ -299,7 +298,7 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 									    <!--css-build:shady-->
 									    <div id="item-with-badge" class="style-scope yt-dropdown-menu">
 										<div class="item style-scope yt-dropdown-menu">
-										    English
+										    Original
 										    <span class="notification style-scope yt-dropdown-menu" hidden=""></span>
 										</div>
 										<ytd-badge-supported-renderer class="style-scope yt-dropdown-menu" disable-upgrade="" hidden=""></ytd-badge-supported-renderer>
@@ -319,7 +318,7 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 									    <!--css-build:shady-->
 									    <div id="item-with-badge" class="style-scope yt-dropdown-menu">
 									        <div class="item style-scope yt-dropdown-menu">
-										    English (auto-generated)
+										    English
 										    <span class="notification style-scope yt-dropdown-menu" hidden=""></span>
 									        </div>
 									        <ytd-badge-supported-renderer class="style-scope yt-dropdown-menu" disable-upgrade="" hidden=""></ytd-badge-supported-renderer>
@@ -358,9 +357,34 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 		 </div>
 		 <div id="footer" class="style-scope ytd-transcript-renderer"></div>
 	     </ytd-transcrpt-renderer>
-	`);
+	`).then((castContent) => {
+             // Add event listeners for interactive buttons
 
-	await headerBuilder;
+	     const languageDropdown = castContent.querySelector("#footer #menu tp-yt-paper-menu-button");
+	     const languageDropdownList = languageDropdown.querySelector("tp-yt-iron-dropdown#dropdown");
+
+
+	     const languageDropdownTrigger = languageDropdown.querySelector("tp-yt-paper-button#label")
+	     listenPressed(languageDropdownTrigger, (mutation) => {setLanguageDropdownListVisibility(true, languageDropdownList);});
+
+	     const languageDropdownOptions = languageDropdown.querySelectorAll("#dropdown tp-yt-paper-item[role=option]");
+	     for (const languageDropdownOption of languageDropdownOptions) {
+	         listenPressed(languageDropdownOption, (mutation) => {
+		      for (const curr of languageDropdownOptions) {
+		          if (curr.isSameNode(mutation.target)) {
+			        curr.parentNode.classList.add("iron-selected"); 
+			  } else {
+			        curr.parentNode.classList.remove("iron-selected");
+			  }
+		      }
+  	              setLanguageDropdownListVisibility(false, languageDropdownList);
+		 });
+	     }
+
+	     registerClickOutListener([languageDropdownTrigger, languageDropdownList], (withinBoundaries) => {if (!withinBoundaries) setLanguageDropdownListVisibility(false, languageDropdownList);});
+	});
+
+	// await headerBuilder;
 	await contentBuilder;
 
 	castTranscriptPanel.setAttribute("status", "initialized");
@@ -481,9 +505,9 @@ const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timest
 }
 
 export const castTranscriptButtonClickerListener = () => {
-	Object.keys(id_2_waitSelectMetadata).forEach((id) => Object.keys(id_2_waitSelectMetadata[id]).forEach((prop) => console.log(`${prop} => ${id_2_waitSelectMetadata[id][prop]}`)));
+        initializeClickOutListener();
+	// Object.keys(id_2_waitSelectMetadata).forEach((id) => Object.keys(id_2_waitSelectMetadata[id]).forEach((prop) => console.log(`${prop} => ${id_2_waitSelectMetadata[id][prop]}`)));
         loadCastTranscriptPanel().then(castTranscriptPanel => castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"));
-	console.log("waitSelectMetadata:");
 }
 
 export const addCastTranscriptButton: AddButtonFunction = async () => {
@@ -543,7 +567,7 @@ const newJobRe = new RegExp("<!--\\s*yte.waitCreateHTML.startFragment=`([^`]*)`\
     be the CSS selector of the element assuming selector1 is the root element of the query, not the absolute document.
 */
 const waitCreateHTML = async (root: HTMLElement, html: string) => {
-        console.log(`Entering waitCreateHTML with root=${root.tagName} ${root.classList}`);
+        debug(`Entering waitCreateHTML with root=${root.tagName} ${root.classList}`);
 	
         const selector_to_job = {}
 
@@ -564,25 +588,77 @@ const waitCreateHTML = async (root: HTMLElement, html: string) => {
 		    asyncToWait: null
 	    };
 	    
-	    console.log(`waitCreateHTML found match at startIdx=${startIdx} with selector=${selector}`);
+	    debug(`waitCreateHTML found match at startIdx=${startIdx} with selector=${selector}`);
 	}
 	truncatedHTML += html.substring(prevEndIdx);
 	
-        console.log(`waitCreateHTML with root=${root.tagName} ${root.classList}: found fragments: ${Object.keys(selector_to_job)}}`);
+        debug(`waitCreateHTML with root=${root.tagName} ${root.classList}: found fragments: ${Object.keys(selector_to_job)}}`);
 
 	root.innerHTML = trustedPolicy.createHTML(truncatedHTML);
 
-	for (const [selector, job] of Object.entries(selector_to_job)) {
-	    job.asyncToWait = waitSelect(root, job.selector).then((targetNode) => {waitCreateHTML(targetNode, job.fragment)});
-	}
-
-        console.log(`waitCreateHTML with root=${root.tagName} ${root.classList}: asyncs initiated`);
-
-	for (const [selector, job] of Object.entries(selector_to_job)) {
-	    await job.asyncToWait;
-	}
-
-        console.log(`waitCreateHTML with root=${root.tagName} ${root.classList}: asyncs done`);
+	await Promise.all(Object.values(selector_to_job).map(async (job) => {
+	    const child = await waitSelect(root, job.selector);
+	    return waitCreateHTML(child, job.fragment);
+	}));
 	
 	return root;
+}
+
+const listenAttributeMutation = (element: HTMLElement, attribute: string, callback: (mutation: MutationRecord) => void) => {
+	const config = { attributes: true, attributeFilter: [attribute] };
+
+	const observer = new MutationObserver((mutations) => {
+	    for (const mutation of mutations) {
+		if (mutation.type === "attributes" && mutation.attributeName === attribute) {
+		    callback(mutation);
+		}
+	    }
+	});
+
+	observer.observe(element, config);
+}
+
+const listenPressed = (element: HTMLElement, callback: (mutation: MutationRecord) => void) => {
+	listenAttributeMutation(element, "pressed", (mutation) => {
+	     if (!mutation.target.hasAttribute("pressed")) {
+		 // User has let go of "pressed" on this element
+		 callback(mutation);
+	     }
+	});
+}
+
+const setLanguageDropdownListVisibility = (visible: boolean, languageDropdownList?: HTMLElement) => {
+        if (!languageDropdownList) languageDropdownList = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript] #footer #menu tp-yt-iron-dropdown#dropdown");
+	if (!languageDropdownList) {
+	     console.log("setLanguageDropdownListVisibility() error: could not find languageDropdownList");
+	     return;
+	}
+
+	const activeOption = languageDropdownList.querySelector("a[class~=iron-selected] tp-yt-paper-item");
+	 
+	if (visible) {
+	     languageDropdownList.style = "outline: none; position: fixed; left: 40.8px; top: 170.4px; z-index: 2202;";
+	     // languageDropdownList.setAttribute("focused", "")
+	     languageDropdownList.removeAttribute("aria-hidden");
+	     if (activeOption) activeOption.focus();
+	} else {
+	     languageDropdownList.style = "outline: none; position: fixed; left: 40.8px; top: 170.4px; z-index: 2202; display: none;";
+	     // languageDropdownList.removeAttribute("focused");
+	     languageDropdownList.setAttribute("aria-hidden", "true");
+	     if (activeOption) activeOption.blur();
+	}
+}
+
+const clickOutRegistry = []
+const registerClickOutListener = (elements: HTMLElement[], callback: (withinBoundaries: boolean) => void) => {
+        clickOutRegistry.push([elements, callback]);
+}
+
+const initializeClickOutListener = () => {
+        document.addEventListener('click', (event) => {
+	    for (const [elements, callback] of clickOutRegistry) {
+	          const withinBoundaries = elements.some(element => event.composedPath().includes(element));
+		  callback(withinBoundaries); 
+	    }
+	});
 }

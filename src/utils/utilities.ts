@@ -911,3 +911,9 @@ export const safeSelect = async (selector: string, awaitBeforeSelect: boolean, e
 	}
 	return ret;
 }
+
+export var DEBUG = true;
+export function debug(message: string, color?: ColorType = "FgMagenta") {
+        if (!DEBUG) return;
+	browserColorLog(message, color);
+}

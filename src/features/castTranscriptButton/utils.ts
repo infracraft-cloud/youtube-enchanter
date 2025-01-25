@@ -649,17 +649,24 @@ const setLanguageDropdownListVisibility = (visible: boolean, languageDropdownLis
 	}
 
 	const activeOption = languageDropdownList.querySelector("a[class~=iron-selected] tp-yt-paper-item");
+	const parentRect = languageDropdownList.parentNode.getBoundingClientRect();
 	 
 	if (visible) {
-	     languageDropdownList.style = "outline: none; position: fixed; left: 40.8px; top: 170.4px; z-index: 2202;";
+	     languageDropdownList.style = `outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202;`;
 	     // languageDropdownList.setAttribute("focused", "")
 	     languageDropdownList.removeAttribute("aria-hidden");
-	     if (activeOption) activeOption.focus();
+	     activeOption ? activeOption.focus() : languageDropdownList.focus();
+
+	     // Now that the dropdown has been rendered, we know its width/height, so check if its spilling out of the viewport. If so, reposition it back in
+	     const rect = languageDropdownList.getBoundingClientRect();
+	     let adjustX = Math.min(0, window.innerWidth - (rect.right + 20));
+	     let adjustY = Math.min(0, window.innerHeight - (rect.bottom + 20));
+	     languageDropdownList.style = `outline: none; position: fixed; left: ${parentRect.left + adjustX}px; top: ${parentRect.top + adjustY}px; z-index: 2202;`;
 	} else {
-	     languageDropdownList.style = "outline: none; position: fixed; left: 40.8px; top: 170.4px; z-index: 2202; display: none;";
+	     languageDropdownList.style = "outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202; display: none;";
 	     // languageDropdownList.removeAttribute("focused");
 	     languageDropdownList.setAttribute("aria-hidden", "true");
-	     if (activeOption) activeOption.blur();
+	     activeOption ? activeOption.blur() : languageDropdownList.blur();
 	}
 }
 

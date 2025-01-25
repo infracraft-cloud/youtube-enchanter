@@ -64,10 +64,10 @@ const loadCastTranscriptPanel = async () : Promise<HTMLElement> => {
 			      castTranscriptPanel.setAttribute("status", "done");
 			  });
 
-			  return castTranscriptPanel;
+			  resolve(castTranscriptPanel);
 		    });
 		} else {
-		    return ret;
+		    resolve(ret);
 		}
 	});
 }
@@ -187,6 +187,15 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	     // For some reason due to dynamic scripts, we must set the text content of the title after we create all the elements,
 	     // otherwise the scripts would modify the title to become empty.
 	     castHeader.querySelector("#title-text").textContent = "Casted Transcript";
+
+
+
+             // Add event listeners for interactive buttons
+
+
+	     // Close button
+	     const closeButton = castHeader.querySelector("#visibility-button yt-button-shape");
+	     registerClickOutListener([closeButton], (withinBoundaries) => {if (withinBoundaries) setCastTranscriptPanelVisibility(false, castTranscriptPanel);});
 	});
 	
 	const contentBuilder = waitCreateHTML(castTranscriptPanel.querySelector("#content"),  `
@@ -360,6 +369,9 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	`).then((castContent) => {
              // Add event listeners for interactive buttons
 
+
+	     // Language dropdown menu
+
 	     const languageDropdown = castContent.querySelector("#footer #menu tp-yt-paper-menu-button");
 	     const languageDropdownList = languageDropdown.querySelector("tp-yt-iron-dropdown#dropdown");
 
@@ -504,10 +516,12 @@ const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timest
 	       </div>`;
 }
 
-export const castTranscriptButtonClickerListener = () => {
+export const castTranscriptButtonClickerListener = async () => {
         initializeClickOutListener();
 	// Object.keys(id_2_waitSelectMetadata).forEach((id) => Object.keys(id_2_waitSelectMetadata[id]).forEach((prop) => console.log(`${prop} => ${id_2_waitSelectMetadata[id][prop]}`)));
-        loadCastTranscriptPanel().then(castTranscriptPanel => castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"));
+	console.log("TEST");
+        const castTranscriptPanel = await loadCastTranscriptPanel();
+	setCastTranscriptPanelVisibility(true, castTranscriptPanel);
 }
 
 export const addCastTranscriptButton: AddButtonFunction = async () => {
@@ -646,6 +660,20 @@ const setLanguageDropdownListVisibility = (visible: boolean, languageDropdownLis
 	     // languageDropdownList.removeAttribute("focused");
 	     languageDropdownList.setAttribute("aria-hidden", "true");
 	     if (activeOption) activeOption.blur();
+	}
+}
+
+const setCastTranscriptPanelVisibility = (visible: boolean, castTranscriptPanel?: HTMLElement) => {
+        if (!castTranscriptPanel) castTranscriptPanel = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
+	if (!castTranscriptPanel) {
+	     console.log("setCastTranscriptPanelVisibility() error: could not find castTranscriptPanel");
+	     return;
+	}
+
+	if (visible) {
+	     castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_EXPANDED");
+	} else {
+	     castTranscriptPanel.setAttribute("visibility", "ENGAGEMENT_PANEL_VISIBILITY_HIDDEN");
 	}
 }
 

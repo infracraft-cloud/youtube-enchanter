@@ -110,7 +110,7 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 		     <div id="action-button" class="style-scope ytd-engagement-panel-title-header-renderer" hidden=""></div>
 		     <div id="information-button" class="style-scope ytd-engagement-panel-title-header-renderer" hidden=""></div>
 		     <div id="menu" class="style-scope ytd-engagement-panel-title-header-renderer">
-			 <ytd-menu-renderer class="style-scope ytd-engagement-panel-title-header-renderer" safe-area="" menu-active="">
+			 <ytd-menu-renderer class="style-scope ytd-engagement-panel-title-header-renderer" safe-area="" menu-active="" style="display: none;">
 			     <!--css-build:shady-->
 			     <!--css_build_scope:ytd-menu-renderer-->
 			     <!--css_build_styles:video.youtube.src.web.polymer.shared.ui.styles.yt_base_styles.yt.base.styles.css.js-->

@@ -143,14 +143,20 @@ const loadTranscriptSegments = (castTranscriptPanel: HTMLElement) => {
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
 	// we don't want to synchronously wait for the result.
-	fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
+	fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${encodeURIComponent(window.location.href, "utf-8")}`, {
 	       headers: { Test: "test" },
 	       method: "get"
-	}).then((response) => {
+	}).then(async (response) => {
 	       if (response.status == 200) {
 		      return response.json();
 	       } else {
-	              throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText}`);
+	       	      let json = {};
+	              try {
+		      	    json = await response.json();
+		      } catch (error) {
+	                    throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText}`);
+		      }
+         	      throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
 	       }
 	}).then((responseJson) => {
 	       setSegments(segmentsContainer, responseJson.transcription.chunks);
@@ -159,8 +165,15 @@ const loadTranscriptSegments = (castTranscriptPanel: HTMLElement) => {
 	       let debugErrorMsg = error.message;
 	       if (error.message.includes("Failed to fetch")) {
 	       	     publicErrorMsg = "Failed to make network connection.";
-	       	     debugErrorMsg = "populateTranscript() error: failed to make network connection. Please double check your internet connections, or if the servers are up.";
+	       	     debugErrorMsg = "loadTranscriptSegments() error: failed to make network connection. Please double check your internet connections, or if the servers are up.";
 	       }
+
+	       // Strip out the developer details in the UI
+	       const responseIdx = publicErrorMsg.indexOf(" (response=");
+	       if (responseIdx >= 0) {
+	       	  publicErrorMsg = publicErrorMsg.substring(0, responseIdx);
+	       }
+	       
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
 	       setSegments(segmentsContainer, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
 	});

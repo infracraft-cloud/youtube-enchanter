@@ -3,7 +3,7 @@ import type { AddButtonFunction, RemoveButtonFunction } from "@/src/features";
 import { addFeatureButton, removeFeatureButton } from "@/src/features/buttonPlacement";
 import { getFeatureIcon } from "@/src/icons";
 import eventManager from "@/src/utils/EventManager";
-import { id_2_waitSelectMetadata, waitForAllElements, waitForSpecificMessage } from "@/src/utils/utilities";
+import { isShortsPage, isWatchPage, id_2_waitSelectMetadata, waitForSpecificMessage } from "@/src/utils/utilities";
 
 import { DEBUG, debug, browserColorLog, createStyledElement, waitSelect } from "@/src/utils/utilities";
 import { trustedPolicy} from "@/src/pages/embedded";
@@ -79,7 +79,7 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	if (d_ws) debug("[buildCastTranscriptPanel] building content done!");
 
 	castTranscriptPanel.setAttribute("status", "initialized");
-	loadTranscriptSegments(castTranscriptPanel);
+	await loadTranscriptSegments(castTranscriptPanel);
 	
 	return castTranscriptPanel;
 }
@@ -132,18 +132,34 @@ const attachContentListeners = (castTranscriptPanel: HTMLElement) => {
 
 	registerGlobalClickListener([languageDropdownTrigger, languageDropdownList], (withinBoundaries) => {if (!withinBoundaries) setLanguageDropdownListVisibility(false, languageDropdownList);});
 	listenAttributePressed(languageDropdownTrigger, (mutation) => {setLanguageDropdownListVisibility(true, languageDropdownList);});
+
+
+	// Transcript segments
+
+	const segmentsContainer = document.querySelector("#content ytd-transcript-segment-list-renderer");
+	if (!segmentsContainer) throw new Error("attachContentListeners() error: cannot find castContent segmentsContainer");
+
+	const videoContainer = getVideoContainer();
+	if (!videoContainer) throw new Error("attachContentListeners() error: cannot find videoContainer");
+
+	const videoElement = videoContainer.querySelector("video");
+	if (!videoElement) throw new Error("attachContentListeners() error: cannot find videoElement");;
+
+	eventManager.addEventListener(videoElement, "timeupdate", async (event) => {
+	       updateActiveSegments(videoContainer.getCurrentTime(), segmentsContainer);
+	}, "castTranscriptActiveSegments");
 }
 
-const loadTranscriptSegments = (castTranscriptPanel: HTMLElement) => {
+const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {
         const segmentsContainer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
 	if (!segmentsContainer) throw new Error("loadTranscriptSegments() error: could not find segmentsContainer");
 	
-	setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
+	await setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
 
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
 	// we don't want to synchronously wait for the result.
-	fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${encodeURIComponent(window.location.href, "utf-8")}`, {
+	fetch(`http://localhost:8001/api/v1/stt/youtube/transcribe?api-key=aaa&url=${encodeURIComponent(window.location.href, "utf-8")}`, {
 	       headers: { Test: "test" },
 	       method: "get"
 	}).then(async (response) => {
@@ -158,9 +174,9 @@ const loadTranscriptSegments = (castTranscriptPanel: HTMLElement) => {
 		      }
          	      throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
 	       }
-	}).then((responseJson) => {
-	       setSegments(segmentsContainer, responseJson.transcription.chunks);
-	}).catch((error) => {
+	}).then(async (responseJson) => {
+	       await setSegments(segmentsContainer, responseJson.transcription.chunks);
+	}).catch(async (error) => {
 	       let publicErrorMsg = error.message;
 	       let debugErrorMsg = error.message;
 	       if (error.message.includes("Failed to fetch")) {
@@ -175,26 +191,25 @@ const loadTranscriptSegments = (castTranscriptPanel: HTMLElement) => {
 	       }
 	       
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
-	       setSegments(segmentsContainer, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
+	       await setSegments(segmentsContainer, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
 	});
 }
 
 
-const setSegments = (segmentsContainer: HTMLElement, segmentJsons) => {
-       let segmentsHTML = "";
+var segmentDatas = []
+const setSegments = async (segmentsContainer: HTMLElement, segmentJsons) => {
 
-       for (let i = 0; i < segmentJsons.length; i++) {
-	     const chunk = segmentJsons[i];
-	     segmentsHTML += buildSegmentHTML(chunk.text, chunk.timestamp[0], chunk.timestamp[1]);
-       }
+       segmentDatas = segmentJsons.map(segmentJson => ({caption: segmentJson.text, startTime_s: segmentJson.timestamp[0], endTime_s: segmentJson.timestamp[1], element: createEmptySegment(segmentJson.text)}));
+       segmentsContainer.replaceChildren(...segmentDatas.map(segmentData => segmentData.element));
        
-       segmentsContainer.innerHTML = trustedPolicy.createHTML(segmentsHTML);
+       await Promise.allSettled(segmentDatas.map(async (segmentData) => {
+	   waitSetInnerHTML(segmentData.element,  buildSegmentInnerHTML(segmentData.caption, segmentData.startTime_s, segmentData.endTime_s));
+       }));
 
        // For some reason, we need to set some of the segment attributes again after the HTML
        // has been created, otherwise some dynamic script will empty it out.
-       const segments = segmentsContainer.querySelectorAll("div[caption]");
-       for (let i = 0; i < segments.length; i++) {
-	   const segment = segments[i];
+       for (const segmentData of segmentDatas) {
+	   const segment = segmentData.element;
 	   const segmentCaption = segment.querySelector("yt-formatted-string");
 	   if (segmentCaption.hasAttribute("is-empty")) {
 	       segmentCaption.removeAttribute("is-empty");
@@ -203,15 +218,19 @@ const setSegments = (segmentsContainer: HTMLElement, segmentJsons) => {
        }
 }
 
-const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timestamp_s: number) => {      
-	const start_hour = Math.floor(start_timestamp_s / 3600);
-	const start_min = Math.floor((start_timestamp_s % 3600) / 60);
-	const start_sec = Math.floor(start_timestamp_s % 60);
+const createEmptySegment = (caption: string) => {
+       return createElement(`<ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container="" caption="${caption}"></ytd-transcript-segment-renderer>`);
+}
+
+const buildSegmentInnerHTML = (caption: string, startTime_s: number, endTime_s: number) => {      
+	const start_hour = Math.floor(startTime_s / 3600);
+	const start_min = Math.floor((startTime_s % 3600) / 60);
+	const start_sec = Math.floor(startTime_s % 60);
 
 	let start_str_words = "";
 	let start_str_digits = "";
-	if (start_timestamp_s >= 0) {
-	      if (start_timestamp_s > 0) {
+	if (startTime_s >= 0) {
+	      if (startTime_s > 0) {
 		  if (start_hour > 0) {
 		     start_str_words += `${start_hour} hour`;
 		     if (start_hour > 1) {
@@ -253,16 +272,20 @@ const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timest
 	      }
 	}
 
-	return `<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}" caption="${caption}">
-	       	     <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
-		     	  <div class="segment-timestamp style-scope ytd-transcript-segment-renderer">${start_str_digits}</div>
-		     </div>
-		     <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-		     <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">
-		     	 ${caption}
-		     </yt-formatted-string>
-		     <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-	       </div>`;
+	return `<!--css-build:shady-->
+		<!--css-build:shady-->
+		<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}">
+		    <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
+			<div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
+			    ${start_str_digits}
+			</div>
+		    </div>
+		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
+		    <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">
+			${caption}
+		    </yt-formatted-string>
+		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
+		</div>`;
 }
 
 export const castTranscriptButtonClickerListener = async () => {
@@ -299,7 +322,7 @@ export const addCastTranscriptButton: AddButtonFunction = async () => {
 
 export const removeCastTranscriptButton: RemoveButtonFunction = async (placement) => {
 	await removeFeatureButton("castTranscriptButton", placement);
-	eventManager.removeEventListeners("castTranscriptButton");
+	eventManager.removeEventListeners("globalClickListener");
 };
 
 const createElement = (html: string) : HTMLElement => {
@@ -457,12 +480,12 @@ const registerGlobalClickListener = (elements: HTMLElement[], callback: (withinB
 
 const lazyLoadGlobalClickListener = () => {
         if (!globalClickListenerInitialized) {
-	      document.addEventListener('click', (event) => {
+	      eventManager.addEventListener(document, "click",  (event) => {
 		  for (const [elements, callback] of globalClickRegistry) {
 			const withinBoundaries = elements.some(element => event.composedPath().includes(element));
 			callback(withinBoundaries); 
 		  }
-	      });
+	      }, "globalClickListener");
 	      globalClickListenerInitialized = true;
 	}
 }
@@ -489,4 +512,60 @@ const getPanelsContainer = () : HTMLEelement => {
 
 const createErrorToast = (errorMsg: Error) => {
         alert(`Error toast message: {error}`);
+}
+
+const getVideoContainer = () : HTMLElement => {
+	const playerContainer =
+		isWatchPage() ? document.querySelector<YouTubePlayerDiv>("div#movie_player")
+		: isShortsPage() ? document.querySelector<YouTubePlayerDiv>("div#shorts-player")
+		: null;
+	return playerContainer;
+}
+
+var prevHighestActiveSegment = null
+const updateActiveSegments = (currentTime_s: number, segmentsContainer: HTMLElement) => {
+        const activeSegments = segmentDatas.map(segmentData => (segmentData.startTime_s <= currentTime_s && segmentData.endTime_s >= currentTime_s));
+	if (activeSegments.every(activeSegment => activeSegment == false)) {
+	       // No change, so keep same as before
+	       return;
+	}
+
+        let highestActiveSegment = null;
+	for (const [idx, segmentData] of segmentDatas.entries()) {
+	       const isActive = activeSegments[idx];
+	       setSegmentActiveState(isActive, segmentData.element);
+
+	       if (isActive) {
+		      const top = segmentData.element.getBoundingClientRect().top;
+		      if (highestActiveSegment === null || top < highestActiveSegment.getBoundingClientRect().top) {
+			      highestActiveSegment = segmentData.element;
+		      }
+
+	       }
+	}
+
+	if (segmentsContainer && highestActiveSegment && highestActiveSegment !== prevHighestActiveSegment) {
+	        const scrollY = highestActiveSegment.getBoundingClientRect().top - segmentDatas[0].element.getBoundingClientRect().top;
+	        segmentsContainer.scrollTop = scrollY + getSegmentsScrollYOffset();
+		prevHighestActiveSegment = highestActiveSegment;
+	}
+}
+
+const getSegmentsScrollYOffset = () : number => {
+        if (!segmentDatas || segmentDatas.length == 0) {
+	        return 0;
+	}
+
+	const first = 0;
+	const third = Math.min(2, segmentDatas.length-1);
+	return segmentDatas[first].element.getBoundingClientRect().top - segmentDatas[third].element.getBoundingClientRect().top;
+}
+
+const setSegmentActiveState = (active: boolean, segment: HTMLElement) => {
+        if (active && !segment.classList.contains("active")) {
+	        segment.classList.add("active");
+	} else if (!active && segment.classList.contains("active")) {
+	        segment.classList.remove("active");
+	}
+	// Else, we don't need to change anything, do nothing
 }

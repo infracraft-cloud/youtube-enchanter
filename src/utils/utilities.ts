@@ -882,6 +882,7 @@ export const waitSelect = async (root: HTMLElement, selector: string, timeoutMs?
 			       if (id_2_waitSelectMetadata[id].status === "waiting") {
 			           id_2_waitSelectMetadata[id].status === "timedOut";
 			           browserColorLog(`waitSelect for ${selector} timed out!`, "FgBlue");
+                                   if (id_2_waitSelectMetadata[id].observer) id_2_waitSelectMetadata[id].observer.disconnect();
 				   reject(id_2_waitSelectMetadata[i]);
 			       }
 		       },timeoutMs);

@@ -5,7 +5,7 @@ export const CAST_TRANSCRIPT_PANEL_HTML = `
 
 export const CAST_TRANSCRIPT_HEADER_HTML = `
 	     <ytd-engagement-panel-title-header-renderer class="style-scope ytd-engagement-panel-section-list-renderer" enable-anchored-panel="" modern-panels=""><!--css-build:shady--><!--css-build:shady--><div id="banner" aria-hidden="true" class="style-scope ytd-engagement-panel-title-header-renderer">
-		 <!--yte.waitCreateHTML.startFragment=\`ytd-engagement-panel-title-header-renderer\`-->
+		 <!--yte.waitSetInnerHTML.startFragment=\`ytd-engagement-panel-title-header-renderer\`-->
 		 <!--css-build:shady-->
 		 <!--css-build:shady-->
 		 <div id="banner" aria-hidden="true" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
@@ -38,12 +38,12 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 			     <div id="flexible-item-buttons" class="style-scope ytd-menu-renderer"></div>
 			     <yt-icon-button id="button" class="dropdown-trigger style-scope ytd-menu-renderer" style-target="button" role="button" aria-label="yt-icon-button">
 			     </yt-icon-button>
-				 <!--yte.waitCreateHTML.startFragment=\`yt-icon-button#button\`-->
+				 <!--yte.waitSetInnerHTML.startFragment=\`yt-icon-button#button\`-->
 				 <!--css-build:shady-->
 				 <!--css-build:shady-->
 				 <button id="button" class="style-scope yt-icon-button" aria-label="More actions">
 				     <yt-icon class="style-scope ytd-menu-renderer">
-					 <!--yte.waitCreateHTML.startFragment=\`yt-icon\`-->
+					 <!--yte.waitSetInnerHTML.startFragment=\`yt-icon\`-->
 					 <!--css-build:shady-->
 					 <!--css-build:shady-->
 					 <span class="yt-icon-shape style-scope yt-icon yt-spec-icon-shape">
@@ -53,7 +53,7 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 						 </svg>
 					     </div>
 					 </span>
-					 <!--yte.waitCreateHTML.endFragment=\`yt-icon\`-->
+					 <!--yte.waitSetInnerHTML.endFragment=\`yt-icon\`-->
 				     </yt-icon>
 				 </button>
 				 <yt-interaction id="interaction" class="circular style-scope yt-icon-button">
@@ -62,7 +62,7 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 				     <div class="stroke style-scope yt-interaction"></div>
 				     <div class="fill style-scope yt-interaction"></div>
 				 </yt-interaction>
-				 <!--yte.waitCreateHTML.endFragment=\`yt-icon-button#button\`-->
+				 <!--yte.waitSetInnerHTML.endFragment=\`yt-icon-button#button\`-->
 			     <yt-button-shape id="button-shape" class="style-scope ytd-menu-renderer" disable-upgrade="" hidden=""></yt-button-shape>
 			 </ytd-menu-renderer>
 		     </div>
@@ -70,11 +70,11 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 		         <ytd-button-renderer class="style-scope ytd-engagement-panel-title-header-renderer" button-renderer="" button-next="">
 			     <!--css-build:shady-->
 			     <yt-button-shape>
-                		 <!--yte.waitCreateHTML.startFragment=\`#visibility-button yt-button-shape\`-->
+                		 <!--yte.waitSetInnerHTML.startFragment=\`#visibility-button yt-button-shape\`-->
 			         <button class="yt-spec-button-shape-next yt-spec-button-shape-next--text yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-only-default" aria-label="Close transcript" title="" style="">
 				     <div class="yt-spec-button-shape-next__icon" aria-hidden="true">
 				         <yt-icon style="width: 24px; height: 24px;">
-					     <!--yte.waitCreateHTML.startFragment=\`yt-icon\`-->
+					     <!--yte.waitSetInnerHTML.startFragment=\`yt-icon\`-->
 					     <!--css-build:shady-->
 					     <!--css-build:shady-->
 					     <span class="yt-icon-shape style-scope yt-icon yt-spec-icon-shape">
@@ -84,7 +84,7 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 						     </svg>
 						 </div>
 				             </span>
-					     <!--yte.waitCreateHTML.endFragment=\`yt-icon\`-->
+					     <!--yte.waitSetInnerHTML.endFragment=\`yt-icon\`-->
 					 </yt-icon>
 			             </div>
 				     <yt-touch-feedback-shape style="border-radius: inherit;">
@@ -94,14 +94,14 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 					 </div>
 			             </yt-touch-feedback-shape>
 				 </button>
-                		 <!--yte.waitCreateHTML.endFragment=\`#visibility-button yt-button-shape\`-->
+                		 <!--yte.waitSetInnerHTML.endFragment=\`#visibility-button yt-button-shape\`-->
 		             </yt-button-shape>
 			     <tp-yt-paper-tooltip offset="8" disable-upgrade=""></tp-yt-paper-tooltip>
 			 </ytd-button-renderer>
 	             </div>
 		 </div>
 		 <div id="subheader" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
-		 <!--yte.waitCreateHTML.endFragment=\`ytd-engagement-panel-title-header-renderer\`-->
+		 <!--yte.waitSetInnerHTML.endFragment=\`ytd-engagement-panel-title-header-renderer\`-->
 	     </ytd-engagement-panel-title-header-renderer>
 	`;
 
@@ -150,7 +150,7 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 					    <!--css-build:shady-->
 					    <!--css-build:shady-->
 					    <tp-yt-paper-menu-button dynamic-align="" expand-sizing-target-for-scrollbars="" class="style-scope yt-dropdown-menu" role="group" aria-haspopup="true" horizontal-align="left" vertical-align="top" aria-disabled="false">
-  				                <!--yte.waitCreateHTML.startFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
+  				                <!--yte.waitSetInnerHTML.startFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
 					        <!--css-build:shady-->
 						<!--css-build:shady-->
 
@@ -192,13 +192,13 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 
 
 						<tp-yt-iron-dropdown id="dropdown" class="style-scope tp-yt-paper-menu-button" horizontal-align="left" vertical-align="top" aria-disabled="false" aria-hidden="true" style="outline: none; display: none;">
-     				                    <!--yte.waitCreateHTML.startFragment=\`tp-yt-iron-dropdown\`-->
+     				                    <!--yte.waitSetInnerHTML.startFragment=\`tp-yt-iron-dropdown\`-->
 						    <!--css-build:shady-->
 						    <!--css-build:shady-->
 						    <div id="contentWrapper" class="style-scope tp-yt-iron-dropdown">
 							<div slot="dropdown-content" class="dropdown-content style-scope tp-yt-paper-menu-button">
 							    <tp-yt-paper-listbox id="menu" class="dropdown-content style-scope yt-dropdown-menu" slot="dropdown-content" role="listbox" tabindex="0">
-     				                                <!--yte.waitCreateHTML.startFragment=\`#menu\`-->
+     				                                <!--yte.waitSetInnerHTML.startFragment=\`#menu\`-->
 							        <!--css-build:shady-->
 								<!--css-build:shady-->
 
@@ -251,15 +251,15 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 
 
 								<dom-repeat id="repeat" class="style-scope yt-dropdown-menu"><template is="dom-repeat"></template></dom-repeat>
-     				                                <!--yte.waitCreateHTML.endFragment=\`#menu\`-->
+     				                                <!--yte.waitSetInnerHTML.endFragment=\`#menu\`-->
  							    </tp-yt-paper-listbox>
 						        </div>
 						    </div>
-     				                    <!--yte.waitCreateHTML.endFragment=\`tp-yt-iron-dropdown\`-->
+     				                    <!--yte.waitSetInnerHTML.endFragment=\`tp-yt-iron-dropdown\`-->
 						</tp-yt-iron-dropdown>
 
 
-  				                <!--yte.waitCreateHTML.endFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
+  				                <!--yte.waitSetInnerHTML.endFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
 
 
 

@@ -38,90 +38,90 @@ rootElement.innerHTML = policy.createHTML("...");
 //});
 // const data = await response.text();
 // const json = JSON.parse(data);
+
+
+error handling in buildCastTranscriptPanel, waitSetInner, event listeners
 */
 
+const DEBUG_WAIT_SET_INNER_HTML = d_ws = false;
+
 const loadCastTranscriptPanel = async () : Promise<HTMLElement> => {
-        return new Promise<HTMLElement>((resolve, reject) => {
-		let ret = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
-		if (ret === null || ret.getAttribute("status") === "initializing") {
-		    let panels = document.querySelector("#primary #below #panels");
-		    if (!panels) {
-			let below = document.querySelector("#primary #below");
-			if (!below) {
-			        reject(new Error("Could not find document.querySelector('#primary #below') in the web page, which is the required container for castTranscriptPanel!"));
-			}
+	let ret = document.querySelector("#primary #below #panels ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript]");
+	if (ret !== null && ret.getAttribute("status") !== "initializing") return ret;  // Already built, so just return it
 
-			panels = createStyledElement({
-			       classlist: ["style-scope", "ytd-watch-flexy"],
-			       elementId: "panels",
-			       elementType: "div"
-			});
+        // Transcript panel hasn't been fully built yet, so build it from scratch	
+	const panels = getPanelsContainer();
+	const castTranscriptPanel = await buildCastTranscriptPanel(panels);
 
-			below.prepend(panels);
-		    }
-
-		    // Transcript panel hasn't been fully built yet, so build it from scratch
-		    buildCastTranscriptPanel(panels).then((castTranscriptPanel) => {		    
-			  // Launch a new promise chain to load the transcript segments, since it requires an API call and can take a very long time
-			  loadTranscriptSegments(castTranscriptPanel).then(() => {
-			      castTranscriptPanel.setAttribute("status", "done");
-			  });
-
-			  resolve(castTranscriptPanel);
-		    });
-		} else {
-		    resolve(ret);
-		}
-	});
+	return castTranscriptPanel;
 }
 
 const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	const castTranscriptPanel = createElement(CAST_TRANSCRIPT_PANEL_HTML);
 	panels.appendChild(castTranscriptPanel);  // NOTE: node has to be added first before we can modify its properties
 
-	const castHeader = await waitCreateHTML(castTranscriptPanel.querySelector("#header"),  CAST_TRANSCRIPT_HEADER_HTML);
-	// For some reason due to dynamic scripts, we must set the text content of the title after we create all the elements,
+	if (d_ws) debug("[buildCastTranscriptPanel] building header");
+	const castHeader = castTranscriptPanel.querySelector("#header");
+	await waitSetInnerHTML(castHeader,  CAST_TRANSCRIPT_HEADER_HTML);
+	// For some reason due to dynamic scripts, we must set the text content of the title after we have created all the elements,
 	// otherwise the scripts would modify the title to become empty.
+	if (d_ws) debug("[buildCastTranscriptPanel] building header initialized -- attaching listeners");
 	castHeader.querySelector("#title-text").textContent = "Casted Transcript";
 	attachHeaderListeners(castTranscriptPanel);
-	
-	const castContent = await waitCreateHTML(castTranscriptPanel.querySelector("#content"),  CAST_TRANSCRIPT_BODY_HTML);
+	if (d_ws) debug("[buildCastTranscriptPanel] building header done!");
+
+
+	if (d_ws) debug("[buildCastTranscriptPanel] building content");
+	const castContent = castTranscriptPanel.querySelector("#content");
+	await waitSetInnerHTML(castContent,  CAST_TRANSCRIPT_BODY_HTML);
+	if (d_ws) debug("[buildCastTranscriptPanel] building content initialized -- attaching listeners");
 	attachContentListeners(castTranscriptPanel);
+	if (d_ws) debug("[buildCastTranscriptPanel] building content done!");
 
 	castTranscriptPanel.setAttribute("status", "initialized");
+	loadTranscriptSegments(castTranscriptPanel);
+	
 	return castTranscriptPanel;
 }
 
-const attachHeaderListeners = async (castTranscriptPanel: HTMLElement) => {
+const attachHeaderListeners = (castTranscriptPanel: HTMLElement) => {
         const castHeader = castTranscriptPanel.querySelector("#header");
+	if (!castHeader) throw new Error("attachHeaderListeners() error: cannot find castHeader");
 	
-	// Close button
 	const closeButton = castHeader.querySelector("#visibility-button yt-button-shape");
-	registerClickOutListener([closeButton], (withinBoundaries) => {if (withinBoundaries) setCastTranscriptPanelVisibility(false, castTranscriptPanel);});
+	if (!closeButton) throw new Error("attachHeaderListeners() error: cannot find castHeader closeButton");
+	
+	registerGlobalClickListener([closeButton], (withinBoundaries) => {if (withinBoundaries) setCastTranscriptPanelVisibility(false, castTranscriptPanel);});
 }
 
-const attachContentListeners = async (castTranscriptPanel: HTMLElement) => {
+const attachContentListeners = (castTranscriptPanel: HTMLElement) => {
         const castContent = castTranscriptPanel.querySelector("#content");
+	if (!castContent) throw new Error("attachContentListeners() error: cannot find castContent");
 	
 	// Language dropdown menu
 
 	const languageDropdown = castContent.querySelector("#footer #menu tp-yt-paper-menu-button");
+	if (!languageDropdown) throw new Error("attachContentListeners() error: cannot find castContent languageDropdown");
 	const languageDropdownList = languageDropdown.querySelector("tp-yt-iron-dropdown#dropdown");
-
-
-	const languageDropdownTrigger = languageDropdown.querySelector("tp-yt-paper-button#label")
-	listenPressed(languageDropdownTrigger, (mutation) => {setLanguageDropdownListVisibility(true, languageDropdownList);});
-
+	if (!languageDropdownList) throw new Error("attachContentListeners() error: cannot find castContent languageDropdownList");
+	const languageDropdownTrigger = languageDropdown.querySelector("tp-yt-paper-button#label");
+	if (!languageDropdownTrigger) throw new Error("attachContentListeners() error: cannot find castContent languageDropdownTrigger");
 	const languageDropdownOptions = languageDropdown.querySelectorAll("#dropdown tp-yt-paper-item[role=option]");
+	if (!languageDropdownOptions) throw new Error("attachContentListeners() error: cannot find castContent languageDropdownOptions");
+	
 	for (const languageDropdownOption of languageDropdownOptions) {
-	    listenPressed(languageDropdownOption, (mutation) => {
+	    listenAttributePressed(languageDropdownOption, (mutation) => {
 		 for (const curr of languageDropdownOptions) {
 		     if (curr.isSameNode(mutation.target)) {
 			   curr.parentNode.classList.add("iron-selected");
 			   const optionText = curr.querySelector("#item-with-badge").textContent.trim();
 			   
 			   const triggerText = languageDropdownTrigger.querySelector("#label-text");
-			   if (triggerText) triggerText.textContent = optionText;
+			   if (triggerText) {
+			         triggerText.textContent = optionText;
+			   } else {
+			         browserColorLog("languageDropdownOption.pressed() error: cannot find triggerText, unable to update the text of languageDropdownTrigger!", "FgRed");
+			   }
 		     } else {
 			   curr.parentNode.classList.remove("iron-selected");
 		     }
@@ -130,16 +130,20 @@ const attachContentListeners = async (castTranscriptPanel: HTMLElement) => {
 	    });
 	}
 
-	registerClickOutListener([languageDropdownTrigger, languageDropdownList], (withinBoundaries) => {if (!withinBoundaries) setLanguageDropdownListVisibility(false, languageDropdownList);});
+	registerGlobalClickListener([languageDropdownTrigger, languageDropdownList], (withinBoundaries) => {if (!withinBoundaries) setLanguageDropdownListVisibility(false, languageDropdownList);});
+	listenAttributePressed(languageDropdownTrigger, (mutation) => {setLanguageDropdownListVisibility(true, languageDropdownList);});
 }
 
 const loadTranscriptSegments = (castTranscriptPanel: HTMLElement) => {
         const segmentsContainer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
-	if (!segmentsContainer) throw new Error("castTranscript() error: could not find castTranscriptPanel.querySelector('ytd-transcript-segment-list-renderer #segments-container')!")
+	if (!segmentsContainer) throw new Error("loadTranscriptSegments() error: could not find segmentsContainer");
 	
 	setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
 
-	return fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
+	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
+	// Since it requires a compute-intensive API call, it can take a very long time, so
+	// we don't want to synchronously wait for the result.
+	fetch(`http://localhost:8001/api/v1/stt/navigate/youtube?api-key=aaa&url=${window.location.href}`, {
 	       headers: { Test: "test" },
 	       method: "get"
 	}).then((response) => {
@@ -172,7 +176,9 @@ const setSegments = (segmentsContainer: HTMLElement, segmentJsons) => {
        }
        
        segmentsContainer.innerHTML = trustedPolicy.createHTML(segmentsHTML);
-       
+
+       // For some reason, we need to set some of the segment attributes again after the HTML
+       // has been created, otherwise some dynamic script will empty it out.
        const segments = segmentsContainer.querySelectorAll("div[caption]");
        for (let i = 0; i < segments.length; i++) {
 	   const segment = segments[i];
@@ -247,10 +253,16 @@ const buildSegmentHTML = (caption: string, start_timestamp_s: number, end_timest
 }
 
 export const castTranscriptButtonClickerListener = async () => {
-        initializeClickOutListener();
+        lazyLoadGlobalClickListener();
 	// Object.keys(id_2_waitSelectMetadata).forEach((id) => Object.keys(id_2_waitSelectMetadata[id]).forEach((prop) => console.log(`${prop} => ${id_2_waitSelectMetadata[id][prop]}`)));
-        const castTranscriptPanel = await loadCastTranscriptPanel();
-	setCastTranscriptPanelVisibility(true, castTranscriptPanel);
+
+	try {
+		const castTranscriptPanel = await loadCastTranscriptPanel();
+		setCastTranscriptPanelVisibility(true, castTranscriptPanel);
+	} catch (error) {
+	        createErrorToast("Error creating castTranscriptPanel");
+		throw error;
+	}
 }
 
 export const addCastTranscriptButton: AddButtonFunction = async () => {
@@ -285,7 +297,7 @@ const createElement = (html: string) : HTMLElement => {
 	return placeholder.children[0];
 }
 
-const newJobRe = new RegExp("<!--\\s*yte.waitCreateHTML.startFragment=`([^`]*)`\\s*-->(.*)<!--\\s*yte.waitCreateHTML.endFragment=`\\1`\\s*-->", "gs");
+const newJobRe = new RegExp("<!--\\s*yte.waitSetInnerHTML.startFragment=`([^`]*)`\\s*-->(.*)<!--\\s*yte.waitSetInnerHTML.endFragment=`\\1`\\s*-->", "gs");
 /*
     Ideally we could modify the Youtube HTML in a single pass, but due to the dynamic scripts that run, and that a lot of custom Youtube
     elements might posibly be isolated iframes, we must create the element.innerHTML in multiple passes. In each pass, we wait for the confirmation
@@ -293,9 +305,9 @@ const newJobRe = new RegExp("<!--\\s*yte.waitCreateHTML.startFragment=`([^`]*)`\
 
     In order to do this, in the HTML, mark the sections that should be create in later passes with
       ..prev HTML snippet
-        <!--yte.waitCreateHTML.startFragment=`<selector>`-->
+        <!--yte.waitSetInnerHTML.startFragment=`<selector>`-->
 	  ..HTML snippet to add to <selector>
-	<!--yte.waitCreateHTML.endFragment=`<selector>`-->
+	<!--yte.waitSetInnerHTML.endFragment=`<selector>`-->
       ..post HTML snippet
 
     This way, on the initial pass, the DOM would create
@@ -306,19 +318,19 @@ const newJobRe = new RegExp("<!--\\s*yte.waitCreateHTML.startFragment=`([^`]*)`\
 
     This can be chained recursively, i.e.
       ..prev HTML snippet1
-        <!--yte.waitCreateHTML.startFragment=`<selector1>`-->
+        <!--yte.waitSetInnerHTML.startFragment=`<selector1>`-->
 	  ..prev HTML snippet2
-	    <!--yte.waitCreateHTML.startFragment=`<selector2>`-->
+	    <!--yte.waitSetInnerHTML.startFragment=`<selector2>`-->
 	      ..HTML snippet to add to <selector>
-	    <!--yte.waitCreateHTML.endFragment=`<selector2>`-->
+	    <!--yte.waitSetInnerHTML.endFragment=`<selector2>`-->
 	  ..post HTML snippet2
-	<!--yte.waitCreateHTML.endFragment=`<selector1>`-->
+	<!--yte.waitSetInnerHTML.endFragment=`<selector1>`-->
       ..post HTML snippet1
     and selector1 would have to be confirmed to be created before creating selector2. Note that in these recursive use cases, selector2 would
     be the CSS selector of the element assuming selector1 is the root element of the query, not the absolute document.
 */
-const waitCreateHTML = async (root: HTMLElement, html: string) => {
-        debug(`Entering waitCreateHTML with root=${root.tagName} ${root.classList}`);
+const waitSetInnerHTML = async (root: HTMLElement, html: string) => {
+        if (d_ws) debug(`[waitSetInnerHTML] root=${root.tagName}, id=${root.id}, class=${root.classList}: start`);
 	
         const selector_to_job = {}
 
@@ -339,29 +351,34 @@ const waitCreateHTML = async (root: HTMLElement, html: string) => {
 		    asyncToWait: null
 	    };
 	    
-	    debug(`waitCreateHTML found match at startIdx=${startIdx} with selector=${selector}`);
+	    if (d_ws) debug(`[waitSetInnerHTML] root=${root.tagName}, id=${root.id}, class=${root.classList}: found match at startIdx=${startIdx} with selector ${selector}`);
 	}
 	truncatedHTML += html.substring(prevEndIdx);
 	
-        debug(`waitCreateHTML with root=${root.tagName} ${root.classList}: found fragments: ${Object.keys(selector_to_job)}}`);
+	if (d_ws) debug(`[waitSetInnerHTML] root=${root.tagName}, id=${root.id}, class=${root.classList}: found ${Object.keys(selector_to_job).length} fragments: [${Object.keys(selector_to_job)}]`);
+	if (d_ws) debug(`[waitSetInnerHTML] root=${root.tagName}, id=${root.id}, class=${root.classList}: creating HTML of truncated input`);
 
 	root.innerHTML = trustedPolicy.createHTML(truncatedHTML);
 
-	await Promise.all(Object.values(selector_to_job).map(async (job) => {
+	if (d_ws) debug(`[waitSetInnerHTML] root=${root.tagName}, id=${root.id}, class=${root.classList}: awaiting async promises...`);
+	
+	await Promise.allSettled(Object.values(selector_to_job).map(async (job) => {
 	    const child = await waitSelect(root, job.selector);
-	    return waitCreateHTML(child, job.fragment);
+	    return waitSetInnerHTML(child, job.fragment);
 	}));
+	
+        if (d_ws) debug(`[waitSetInnerHTML] root=${root.tagName}, id=${root.id}, class=${root.classList}: awaiting async promises done!`);
 	
 	return root;
 }
 
-const listenAttributeMutation = (element: HTMLElement, attribute: string, callback: (mutation: MutationRecord) => void) => {
+const listenAttributeMutation = (element: HTMLElement, attribute: string, callback: (mutation: MutationRecord, observer: MutationObserver) => void) => {
 	const config = { attributes: true, attributeFilter: [attribute] };
 
 	const observer = new MutationObserver((mutations) => {
 	    for (const mutation of mutations) {
 		if (mutation.type === "attributes" && mutation.attributeName === attribute) {
-		    callback(mutation);
+		    callback(mutation, observer);
 		}
 	    }
 	});
@@ -369,11 +386,11 @@ const listenAttributeMutation = (element: HTMLElement, attribute: string, callba
 	observer.observe(element, config);
 }
 
-const listenPressed = (element: HTMLElement, callback: (mutation: MutationRecord) => void) => {
-	listenAttributeMutation(element, "pressed", (mutation) => {
+const listenAttributePressed = (element: HTMLElement, callback: (mutation: MutationRecord, observer: MutationObserver) => void) => {
+	listenAttributeMutation(element, "pressed", (mutation, observer) => {
 	     if (!mutation.target.hasAttribute("pressed")) {
 		 // User has let go of "pressed" on this element
-		 callback(mutation);
+		 callback(mutation, observer);
 	     }
 	});
 }
@@ -390,18 +407,16 @@ const setLanguageDropdownListVisibility = (visible: boolean, languageDropdownLis
 	 
 	if (visible) {
 	     languageDropdownList.style = `outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202;`;
-	     // languageDropdownList.setAttribute("focused", "")
 	     languageDropdownList.removeAttribute("aria-hidden");
 	     activeOption ? activeOption.focus() : languageDropdownList.focus();
 
-	     // Now that the dropdown has been rendered, we know its width/height, so check if its spilling out of the viewport. If so, reposition it back in
+	     // Now that the dropdown has been rendered, we know its width/height, so check if it is spilling out of the viewport. If so, reposition it back in the viewport
 	     const rect = languageDropdownList.getBoundingClientRect();
-	     let adjustX = Math.min(0, window.innerWidth - (rect.right + 20));
-	     let adjustY = Math.min(0, window.innerHeight - (rect.bottom + 20));
+	     const adjustX = Math.min(0, window.innerWidth - (rect.right + 20));
+	     const adjustY = Math.min(0, window.innerHeight - (rect.bottom + 20));
 	     languageDropdownList.style = `outline: none; position: fixed; left: ${parentRect.left + adjustX}px; top: ${parentRect.top + adjustY}px; z-index: 2202;`;
 	} else {
 	     languageDropdownList.style = "outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202; display: none;";
-	     // languageDropdownList.removeAttribute("focused");
 	     languageDropdownList.setAttribute("aria-hidden", "true");
 	     activeOption ? activeOption.blur() : languageDropdownList.blur();
 	}
@@ -421,16 +436,44 @@ const setCastTranscriptPanelVisibility = (visible: boolean, castTranscriptPanel?
 	}
 }
 
-const clickOutRegistry = []
-const registerClickOutListener = (elements: HTMLElement[], callback: (withinBoundaries: boolean) => void) => {
-        clickOutRegistry.push([elements, callback]);
+var globalClickListenerInitialized = false;
+const globalClickRegistry = []
+const registerGlobalClickListener = (elements: HTMLElement[], callback: (withinBoundaries: boolean) => void) => {
+        globalClickRegistry.push([elements, callback]);
 }
 
-const initializeClickOutListener = () => {
-        document.addEventListener('click', (event) => {
-	    for (const [elements, callback] of clickOutRegistry) {
-	          const withinBoundaries = elements.some(element => event.composedPath().includes(element));
-		  callback(withinBoundaries); 
+const lazyLoadGlobalClickListener = () => {
+        if (!globalClickListenerInitialized) {
+	      document.addEventListener('click', (event) => {
+		  for (const [elements, callback] of globalClickRegistry) {
+			const withinBoundaries = elements.some(element => event.composedPath().includes(element));
+			callback(withinBoundaries); 
+		  }
+	      });
+	      globalClickListenerInitialized = true;
+	}
+}
+
+const getPanelsContainer = () : HTMLEelement => {
+	let panels = document.querySelector("#primary #below #panels");
+	if (!panels) {
+	    let below = document.querySelector("#primary #below");
+	    if (!below) {
+		    throw new Error("Could not find document.querySelector('#primary #below') in the web page, which is the required container for castTranscriptPanel!");
 	    }
-	});
+
+	    panels = createStyledElement({
+		   classlist: ["style-scope", "ytd-watch-flexy"],
+		   elementId: "panels",
+		   elementType: "div"
+	    });
+
+	    below.prepend(panels);
+	}
+
+	return panels;
+}
+
+const createErrorToast = (errorMsg: Error) => {
+        alert(`Error toast message: {error}`);
 }

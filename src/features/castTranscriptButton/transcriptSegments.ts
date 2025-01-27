@@ -3,10 +3,20 @@ import { debug, browserColorLog } from "@/src/utils/utilities";
 
 import { createElement, fetchTranscribeApi, registerGlobalClickListener, waitSetInnerHTML, getVideoContainer, removeGlobalClickListener } from "./utils";
 
-// NOTE: set vertical margin to auto for <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
+// NOTE: remove event listeners when panel is closed?
+
+type Language = string;
+type LangString = Map<Language, string>;
+interface SegmentData {
+        fullCaption: LangString;
+        captionPieces: LangString[];
+	startTime_s: number;
+	endTime_s: number;
+	element: HTMLElement;
+}
 
 export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
-	await setSegments(castTranscriptPanel, [{text: "Loading...", timestamp: [-1, -1]}]);
+	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")]);
 
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
@@ -24,7 +34,13 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
          	      throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
 	       }
 	}).then(async (responseJson) => {
-	       await setSegments(castTranscriptPanel, responseJson.transcription.chunks);
+	       const newSegmentDatas = responseJson.transcription.chunks.map(segmentJson => ({fullCaption: new Map([["original", segmentJson.text]]),
+									     captionPieces: [new Map([["original", segmentJson.text]])],
+									     startTime_s: segmentJson.timestamp[0],
+									     endTime_s: segmentJson.timestamp[1],
+									     element: createEmptySegment()}));
+
+	       await setSegments(castTranscriptPanel, newSegmentDatas);
 	}).catch(async (error) => {
 	       let publicErrorMsg = error.message;
 	       let debugErrorMsg = error.message;
@@ -40,34 +56,31 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
 	       }
 	       
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
-	       await setSegments(castTranscriptPanel, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
+	       await setSegments(castTranscriptPanel, [createFakeSegmentData(`Network request error: ${publicErrorMsg}`)]);
 	});
 }
 
-type Language = string;
-type LangString = Map<Language, string>;
-interface SegmentData {
-        fullCaption: LangString;
-        captionPieces: LangString[];
-	startTime_s: number;
-	endTime_s: number;
-	element: HTMLElement;
+const createFakeSegmentData = (caption: string) : SegmentData => {
+       return {fullCaption: new Map([["original", caption]]),
+               captionPieces: [new Map([["original", caption]])],
+	       startTime_s: -1,
+	       endTime_s: -1,
+	       element: createEmptySegment()
+       };
 }
+
 var segmentDatas : SegmentData[] = []
-const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
+const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: SegmentData[]) => {
        clearSegments();
+       
+       segmentDatas = newSegmentDatas;
 
        const segmentListRenderer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer");
        if (!segmentListRenderer) throw new Error("setSegments() error: could not find segmentListRenderer");
 
        const segmentsContainer = segmentListRenderer.querySelector("#segments-container");
        if (!segmentsContainer) throw new Error("setSegments() error: could not find segmentsContainer");
-	
-       segmentDatas = segmentJsons.map(segmentJson => ({fullCaption: new Map([["original", segmentJson.text]]),
-                                                        captionPieces: [new Map([["original", segmentJson.text]])],
-							startTime_s: segmentJson.timestamp[0],
-							endTime_s: segmentJson.timestamp[1],
-							element: createEmptySegment()}));
+
        segmentsContainer.replaceChildren(...segmentDatas.map(segmentData => segmentData.element));
        
        await Promise.allSettled(segmentDatas.map(async (segmentData) => {

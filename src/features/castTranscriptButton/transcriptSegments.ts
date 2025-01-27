@@ -3,7 +3,7 @@ import { debug, browserColorLog } from "@/src/utils/utilities";
 
 import { createElement, fetchTranscribeApi, registerGlobalClickListener, waitSetInnerHTML, getVideoContainer, removeGlobalClickListener } from "./utils";
 
-
+// NOTE: set vertical margin to auto for <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
 
 export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
 	await setSegments(castTranscriptPanel, [{text: "Loading...", timestamp: [-1, -1]}]);
@@ -66,10 +66,13 @@ const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
        // has been created, because some dynamic script from Youtube immediately emptied it out.
        for (const segmentData of segmentDatas) {
 	   const segment = segmentData.element;
-	   const segmentCaption = segment.querySelector("yt-formatted-string");
-	   if (segmentCaption.hasAttribute("is-empty")) {
-	       segmentCaption.removeAttribute("is-empty");
-	       segmentCaption.textContent = segment.getAttribute("caption");
+	   const segmentCaptions = segment.querySelectorAll("yt-formatted-string");
+	   for (const segmentCaption of segmentCaptions) {
+	       if (segmentCaption.hasAttribute("is-empty")) {
+		   segmentCaption.removeAttribute("is-empty");
+		   // segmentCaption.textContent = segment.getAttribute("caption");
+		   await waitSetInnerHTML(segmentCaption, `<table><tbody><tr><td>${segment.getAttribute("caption")}</td></tr></tbody></table>`);
+	       }
 	   }
        }
 
@@ -154,17 +157,20 @@ const buildSegmentInnerHTML = (caption: string, startTime_s: number, endTime_s: 
 	      }
 	}
 
+	let rowHTML = "";
+	
+
 	return `<!--css-build:shady-->
 		<!--css-build:shady-->
 		<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}">
-		    <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
+		    <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true" style="margin-top: auto; margin-bottom: auto;">
 			<div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
 			    ${start_str_digits}
 			</div>
 		    </div>
 		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-		    <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">
-			${caption}
+          	    <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">
+		        <!-- leave the caption empty, because dynamic scripts would set it to empty anyways. Set it later via javascript -->
 		    </yt-formatted-string>
 		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
 		</div>`;

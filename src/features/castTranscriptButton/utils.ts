@@ -132,29 +132,10 @@ const attachContentListeners = (castTranscriptPanel: HTMLElement) => {
 
 	registerGlobalClickListener([languageDropdownTrigger, languageDropdownList], (withinBoundaries) => {if (!withinBoundaries) setLanguageDropdownListVisibility(false, languageDropdownList);});
 	listenAttributePressed(languageDropdownTrigger, (mutation) => {setLanguageDropdownListVisibility(true, languageDropdownList);});
-
-
-	// Transcript segments
-
-	const segmentsContainer = document.querySelector("#content ytd-transcript-segment-list-renderer");
-	if (!segmentsContainer) throw new Error("attachContentListeners() error: cannot find castContent segmentsContainer");
-
-	const videoContainer = getVideoContainer();
-	if (!videoContainer) throw new Error("attachContentListeners() error: cannot find videoContainer");
-
-	const videoElement = videoContainer.querySelector("video");
-	if (!videoElement) throw new Error("attachContentListeners() error: cannot find videoElement");;
-
-	eventManager.addEventListener(videoElement, "timeupdate", async (event) => {
-	       updateActiveSegments(videoContainer.getCurrentTime(), segmentsContainer);
-	}, "castTranscriptActiveSegments");
 }
 
-const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {
-        const segmentsContainer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer #segments-container");
-	if (!segmentsContainer) throw new Error("loadTranscriptSegments() error: could not find segmentsContainer");
-	
-	await setSegments(segmentsContainer, [{text: "Loading...", timestamp: [-1, -1]}]);
+const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
+	await setSegments(castTranscriptPanel, [{text: "Loading...", timestamp: [-1, -1]}]);
 
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
@@ -175,7 +156,7 @@ const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {
          	      throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
 	       }
 	}).then(async (responseJson) => {
-	       await setSegments(segmentsContainer, responseJson.transcription.chunks);
+	       await setSegments(castTranscriptPanel, responseJson.transcription.chunks);
 	}).catch(async (error) => {
 	       let publicErrorMsg = error.message;
 	       let debugErrorMsg = error.message;
@@ -191,14 +172,21 @@ const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {
 	       }
 	       
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
-	       await setSegments(segmentsContainer, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
+	       await setSegments(castTranscriptPanel, [{text: `Network request error: ${publicErrorMsg}`, timestamp: [-1, -1]}]);
 	});
 }
 
 
 var segmentDatas = []
-const setSegments = async (segmentsContainer: HTMLElement, segmentJsons) => {
+const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
+       clearSegments();
 
+       const segmentListRenderer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer");
+       if (!segmentListRenderer) throw new Error("setSegments() error: could not find segmentListRenderer");
+
+       const segmentsContainer = segmentListRenderer.querySelector("#segments-container");
+       if (!segmentsContainer) throw new Error("setSegments() error: could not find segmentsContainer");
+	
        segmentDatas = segmentJsons.map(segmentJson => ({caption: segmentJson.text, startTime_s: segmentJson.timestamp[0], endTime_s: segmentJson.timestamp[1], element: createEmptySegment(segmentJson.text)}));
        segmentsContainer.replaceChildren(...segmentDatas.map(segmentData => segmentData.element));
        
@@ -215,6 +203,31 @@ const setSegments = async (segmentsContainer: HTMLElement, segmentJsons) => {
 	       segmentCaption.removeAttribute("is-empty");
 	       segmentCaption.textContent = segment.getAttribute("caption");
 	   }
+       }
+
+       attachSegmentListeners(segmentListRenderer);
+}
+
+const clearSegments = () => {
+       for (const segmentData of segmentDatas) {
+       	      removeGlobalClickListener([segmentData.element]);
+       }
+       segmentDatas = []
+}
+
+const attachSegmentListeners = (segmentListRenderer: HTMLElement) => {
+       const videoContainer = getVideoContainer();
+       if (!videoContainer) throw new Error("attachSegmentListeners() error: cannot find videoContainer");
+
+       const videoElement = videoContainer.querySelector("video");
+       if (!videoElement) throw new Error("attachSegmentListeners() error: cannot find videoElement");
+       
+       eventManager.addEventListener(videoElement, "timeupdate", async (event) => {
+	      updateActiveSegments(videoContainer.getCurrentTime(), segmentListRenderer);
+       }, "castTranscriptActiveSegments");
+       
+       for (const segmentData of segmentDatas) {
+       	      registerGlobalClickListener([segmentData.element], (withinBoundaries) => {if (withinBoundaries) videoContainer.seekTo(segmentData.startTime_s);});
        }
 }
 
@@ -475,15 +488,28 @@ const setCastTranscriptPanelVisibility = (visible: boolean, castTranscriptPanel?
 var globalClickListenerInitialized = false;
 const globalClickRegistry = []
 const registerGlobalClickListener = (elements: HTMLElement[], callback: (withinBoundaries: boolean) => void) => {
-        globalClickRegistry.push([elements, callback]);
+        globalClickRegistry.push({elements: elements, callback: callback});
+}
+
+const removeGlobalClickListener = (elements: HTMLElement[]) => {
+        for (const [idx, globalClickData] of Array.from(globalClickRegistry.entries()).reverse()) {
+              const sameElems =  (globalClickData.elements.length === elements.length && globalClickData.elements.every((globalClickElem, idx2) => {
+	      	   return globalClickElem === elements[idx2];
+	      }));
+
+	      if (sameElems) {
+	      	   // Found match, so delete
+		   globalClickRegistry.splice(idx, 1);
+	      }
+	}
 }
 
 const lazyLoadGlobalClickListener = () => {
         if (!globalClickListenerInitialized) {
 	      eventManager.addEventListener(document, "click",  (event) => {
-		  for (const [elements, callback] of globalClickRegistry) {
-			const withinBoundaries = elements.some(element => event.composedPath().includes(element));
-			callback(withinBoundaries); 
+		  for (const globalClickData of globalClickRegistry) {
+			const withinBoundaries = globalClickData.elements.some(element => event.composedPath().includes(element));
+			globalClickData.callback(withinBoundaries); 
 		  }
 	      }, "globalClickListener");
 	      globalClickListenerInitialized = true;
@@ -523,8 +549,8 @@ const getVideoContainer = () : HTMLElement => {
 }
 
 var prevHighestActiveSegment = null
-const updateActiveSegments = (currentTime_s: number, segmentsContainer: HTMLElement) => {
-        const activeSegments = segmentDatas.map(segmentData => (segmentData.startTime_s <= currentTime_s && segmentData.endTime_s >= currentTime_s));
+const updateActiveSegments = (currentTime_s: number, segmentListRenderer: HTMLElement) => {
+        const activeSegments = segmentDatas.map(segmentData => (Math.floor(segmentData.startTime_s) <= Math.floor(currentTime_s) && Math.floor(segmentData.endTime_s) > Math.floor(currentTime_s)));
 	if (activeSegments.every(activeSegment => activeSegment == false)) {
 	       // No change, so keep same as before
 	       return;
@@ -544,9 +570,11 @@ const updateActiveSegments = (currentTime_s: number, segmentsContainer: HTMLElem
 	       }
 	}
 
-	if (segmentsContainer && highestActiveSegment && highestActiveSegment !== prevHighestActiveSegment) {
+	if (segmentListRenderer && highestActiveSegment && highestActiveSegment !== prevHighestActiveSegment) {
 	        const scrollY = highestActiveSegment.getBoundingClientRect().top - segmentDatas[0].element.getBoundingClientRect().top;
-	        segmentsContainer.scrollTop = scrollY + getSegmentsScrollYOffset();
+		console.log(`TEST1 ${segmentListRenderer.scrollTop} ${scrollY} ${getSegmentsScrollYOffset()}`);
+	        segmentListRenderer.scrollTop = scrollY + getSegmentsScrollYOffset();
+		console.log(`TEST2 ${segmentListRenderer.scrollTop}`);
 		prevHighestActiveSegment = highestActiveSegment;
 	}
 }

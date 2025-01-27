@@ -44,8 +44,16 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
 	});
 }
 
-
-var segmentDatas = []
+type Language = string;
+type LangString = Map<Language, string>;
+interface SegmentData {
+        fullCaption: LangString;
+        captionPieces: LangString[];
+	startTime_s: number;
+	endTime_s: number;
+	element: HTMLElement;
+}
+var segmentDatas : SegmentData[] = []
 const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
        clearSegments();
 
@@ -55,15 +63,19 @@ const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
        const segmentsContainer = segmentListRenderer.querySelector("#segments-container");
        if (!segmentsContainer) throw new Error("setSegments() error: could not find segmentsContainer");
 	
-       segmentDatas = segmentJsons.map(segmentJson => ({caption: segmentJson.text, startTime_s: segmentJson.timestamp[0], endTime_s: segmentJson.timestamp[1], element: createEmptySegment(segmentJson.text)}));
+       segmentDatas = segmentJsons.map(segmentJson => ({fullCaption: new Map([["original", segmentJson.text]]),
+                                                        captionPieces: [new Map([["original", segmentJson.text]])],
+							startTime_s: segmentJson.timestamp[0],
+							endTime_s: segmentJson.timestamp[1],
+							element: createEmptySegment()}));
        segmentsContainer.replaceChildren(...segmentDatas.map(segmentData => segmentData.element));
        
        await Promise.allSettled(segmentDatas.map(async (segmentData) => {
-	   waitSetInnerHTML(segmentData.element,  buildSegmentInnerHTML(segmentData.caption, segmentData.startTime_s, segmentData.endTime_s));
+	   waitSetInnerHTML(segmentData.element,  buildEmptySegmentInnerHTML(segmentData.fullCaption["original"], segmentData.startTime_s, segmentData.endTime_s));
        }));
 
-       // For some reason, we need to set some of the segment attributes again after the HTML
-       // has been created, because some dynamic script from Youtube immediately emptied it out.
+       // For some reason, we need to set the caption data after the HTML has been created/modified,
+       // because some dynamic script from Youtube immediately emptied it out.
        for (const segmentData of segmentDatas) {
 	   const segment = segmentData.element;
 	   const segmentCaptions = segment.querySelectorAll("yt-formatted-string");
@@ -71,7 +83,7 @@ const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
 	       if (segmentCaption.hasAttribute("is-empty")) {
 		   segmentCaption.removeAttribute("is-empty");
 		   // segmentCaption.textContent = segment.getAttribute("caption");
-		   await waitSetInnerHTML(segmentCaption, `<table><tbody><tr><td>${segment.getAttribute("caption")}</td></tr></tbody></table>`);
+		   await waitSetInnerHTML(segmentCaption, buildCaptionInnerHTML(segmentData.captionPieces));
 	       }
 	   }
        }
@@ -103,11 +115,11 @@ const attachSegmentListeners = (segmentListRenderer: HTMLElement) => {
        }
 }
 
-const createEmptySegment = (caption: string) => {
-       return createElement(`<ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container="" caption="${caption}"></ytd-transcript-segment-renderer>`);
+const createEmptySegment = () => {
+       return createElement(`<ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer" rounded-container=""></ytd-transcript-segment-renderer>`);
 }
 
-const buildSegmentInnerHTML = (caption: string, startTime_s: number, endTime_s: number) => {      
+const buildEmptySegmentInnerHTML = (originalCaption: string, startTime_s: number, endTime_s: number) => {      
 	const start_hour = Math.floor(startTime_s / 3600);
 	const start_min = Math.floor((startTime_s % 3600) / 60);
 	const start_sec = Math.floor(startTime_s % 60);
@@ -162,7 +174,7 @@ const buildSegmentInnerHTML = (caption: string, startTime_s: number, endTime_s: 
 
 	return `<!--css-build:shady-->
 		<!--css-build:shady-->
-		<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${caption}">
+		<div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="${start_str_words} ${originalCaption}">
 		    <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true" style="margin-top: auto; margin-bottom: auto;">
 			<div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
 			    ${start_str_digits}
@@ -170,10 +182,27 @@ const buildSegmentInnerHTML = (caption: string, startTime_s: number, endTime_s: 
 		    </div>
 		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
           	    <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">
-		        <!-- leave the caption empty, because dynamic scripts would set it to empty anyways. Set it later via javascript -->
+		        <!-- leave the caption empty, because dynamic scripts would set it to empty anyways. Set it later via javascript in setSegments() -->
 		    </yt-formatted-string>
 		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
 		</div>`;
+}
+
+
+const buildCaptionInnerHTML = (captionPieces: LangString[]) => {
+        let html = "";
+	for (const captionPiece of captionPieces) {
+	    html += `<span>
+			 <div id="caption-piece-container" style="display: inline-flex; flex-direction: column; justify-content: center; align-items: center; align-content: center">`;
+	    for (const [langauge, content] of captionPiece) {
+	            html += `<div id="caption-piece" captionPiece="${content}" language="${language}">
+		    	         ${content}
+			     </div>`;
+	    }
+	    html += `	 </div>
+		     </span>`;
+	}
+	return html;
 }
 
 var prevHighestActiveSegment = null
@@ -198,7 +227,7 @@ const updateActiveSegments = (currentTime_s: number, segmentListRenderer: HTMLEl
 	       }
 	}
 
-	if (segmentListRenderer && highestActiveSegment && highestActiveSegment !== prevHighestActiveSegment) {
+	if (segmentListRenderer && highestActiveSegment && segmentDatas.length > 0 && highestActiveSegment !== prevHighestActiveSegment) {
 	        const scrollY = highestActiveSegment.getBoundingClientRect().top - segmentDatas[0].element.getBoundingClientRect().top;
 	        segmentListRenderer.scrollTop = scrollY + getSegmentsScrollYOffset();
 		prevHighestActiveSegment = highestActiveSegment;

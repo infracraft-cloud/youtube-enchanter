@@ -36,8 +36,7 @@ import { disableHideTranslateComment, enableHideTranslateComment } from "@/src/f
 import { addLoopButton, removeLoopButton } from "@/src/features/loopButton";
 import { addMaximizePlayerButton, removeMaximizePlayerButton } from "@/src/features/maximizePlayerButton";
 import { maximizePlayer } from "@/src/features/maximizePlayerButton/utils";
-import { castTranscriptButton } from "@/src/features/castTranscriptButton";
-import { removeCastTranscriptButton } from "@/src/features/castTranscriptButton/utils";
+import { castTranscriptButton, removeCastTranscriptButton } from "@/src/features/castTranscriptButton";
 import { openTranscriptButton } from "@/src/features/openTranscriptButton";
 import { removeOpenTranscriptButton } from "@/src/features/openTranscriptButton/utils";
 import { disableOpenYouTubeSettingsOnHover, enableOpenYouTubeSettingsOnHover } from "@/src/features/openYouTubeSettingsOnHover";

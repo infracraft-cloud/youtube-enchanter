@@ -5,7 +5,7 @@ import { addForwardButton, addRewindButton, removeForwardButton, removeRewindBut
 import { addHideEndScreenCardsButton, removeHideEndScreenCardsButton } from "@/src/features/hideEndScreenCards";
 import { addLoopButton, removeLoopButton } from "@/src/features/loopButton";
 import { addMaximizePlayerButton, removeMaximizePlayerButton } from "@/src/features/maximizePlayerButton";
-import { addCastTranscriptButton, removeCastTranscriptButton } from "@/src/features/castTranscriptButton/utils";
+import { addCastTranscriptButton, removeCastTranscriptButton } from "@/src/features/castTranscriptButton";
 import { addOpenTranscriptButton, removeOpenTranscriptButton } from "@/src/features/openTranscriptButton/utils";
 import {
 	addDecreasePlaybackSpeedButton,

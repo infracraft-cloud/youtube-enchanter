@@ -195,7 +195,7 @@ const setSegments = async (castTranscriptPanel: HTMLElement, segmentJsons) => {
        }));
 
        // For some reason, we need to set some of the segment attributes again after the HTML
-       // has been created, otherwise some dynamic script will empty it out.
+       // has been created, because some dynamic script from Youtube immediately emptied it out.
        for (const segmentData of segmentDatas) {
 	   const segment = segmentData.element;
 	   const segmentCaption = segment.querySelector("yt-formatted-string");
@@ -212,6 +212,7 @@ const clearSegments = () => {
        for (const segmentData of segmentDatas) {
        	      removeGlobalClickListener([segmentData.element]);
        }
+       eventManager.removeEventListeners("castTranscriptActiveSegments")
        segmentDatas = []
 }
 
@@ -572,9 +573,7 @@ const updateActiveSegments = (currentTime_s: number, segmentListRenderer: HTMLEl
 
 	if (segmentListRenderer && highestActiveSegment && highestActiveSegment !== prevHighestActiveSegment) {
 	        const scrollY = highestActiveSegment.getBoundingClientRect().top - segmentDatas[0].element.getBoundingClientRect().top;
-		console.log(`TEST1 ${segmentListRenderer.scrollTop} ${scrollY} ${getSegmentsScrollYOffset()}`);
 	        segmentListRenderer.scrollTop = scrollY + getSegmentsScrollYOffset();
-		console.log(`TEST2 ${segmentListRenderer.scrollTop}`);
 		prevHighestActiveSegment = highestActiveSegment;
 	}
 }

@@ -101,7 +101,12 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
 	   }
        }
 
-       attachSegmentListeners(segmentListRenderer);
+
+       const videoContainer = getVideoContainer();
+       if (!videoContainer) throw new Error("setSegments() error: cannot find videoContainer");
+       
+       updateActiveSegment(segmentListRenderer, videoContainer.getCurrentTime());
+       attachSegmentListeners(segmentListRenderer, videoContainer);
 }
 
 const clearSegments = () => {
@@ -112,15 +117,12 @@ const clearSegments = () => {
        segmentDatas = []
 }
 
-const attachSegmentListeners = (segmentListRenderer: HTMLElement) => {
-       const videoContainer = getVideoContainer();
-       if (!videoContainer) throw new Error("attachSegmentListeners() error: cannot find videoContainer");
-
+const attachSegmentListeners = (segmentListRenderer: HTMLElement, videoContainer: HTMLElement) => {
        const videoElement = videoContainer.querySelector("video");
        if (!videoElement) throw new Error("attachSegmentListeners() error: cannot find videoElement");
        
        eventManager.addEventListener(videoElement, "timeupdate", async (event) => {
-	      updateActiveSegments(videoContainer.getCurrentTime(), segmentListRenderer);
+	      updateActiveSegment(segmentListRenderer, videoContainer.getCurrentTime());
        }, "castTranscriptActiveSegments");
        
        for (const segmentData of segmentDatas) {
@@ -218,36 +220,42 @@ const buildCaptionInnerHTML = (captionPieces: LangString[]) => {
 	return html;
 }
 
-var prevHighestActiveSegment = null
-const updateActiveSegments = (currentTime_s: number, segmentListRenderer: HTMLElement) => {
-        const activeSegments = segmentDatas.map(segmentData => (Math.floor(segmentData.startTime_s) <= Math.floor(currentTime_s) && Math.floor(segmentData.endTime_s) > Math.floor(currentTime_s)));
-	if (activeSegments.every(activeSegment => activeSegment == false)) {
-	       // No change, so keep same as before
-	       return;
+var prevActiveSegment = null
+const updateActiveSegment = (segmentListRenderer: HTMLElement, currentTime_s: number) => {
+        if (segmentDatas.length === 0) return;
+
+	// activeSegment will be the last segment in the segmentDatas list where startTime_s <= currentTime_s
+        let activeSegment = null;
+	for (const segmentData of segmentDatas) {
+	      if (segmentData.startTime_s < 0) continue;   // Ignore fake segments
+	      if (segmentData.startTime_s > currentTime_s) break;
+
+	      activeSegment = segmentData.element;
 	}
+	
+	if (activeSegment && activeSegment !== prevActiveSegment) {
+	        segmentDatas.forEach(segmentData => setSegmentActiveState((segmentData.element === activeSegment), segmentData.element));
 
-        let highestActiveSegment = null;
-	for (const [idx, segmentData] of segmentDatas.entries()) {
-	       const isActive = activeSegments[idx];
-	       setSegmentActiveState(isActive, segmentData.element);
-
-	       if (isActive) {
-		      const top = segmentData.element.getBoundingClientRect().top;
-		      if (highestActiveSegment === null || top < highestActiveSegment.getBoundingClientRect().top) {
-			      highestActiveSegment = segmentData.element;
-		      }
-
-	       }
-	}
-
-	if (segmentListRenderer && highestActiveSegment && segmentDatas.length > 0 && highestActiveSegment !== prevHighestActiveSegment) {
-	        const scrollY = highestActiveSegment.getBoundingClientRect().top - segmentDatas[0].element.getBoundingClientRect().top;
-	        segmentListRenderer.scrollTop = scrollY + getSegmentsScrollYOffset();
-		prevHighestActiveSegment = highestActiveSegment;
+		try {
+		        if (segmentListRenderer) segmentListRenderer.scrollTop = getSegmentScrollY(activeSegment);
+		} catch (error) {
+		        // Fail silently, since this isn't essential
+			console.error(new Error(`updateActiveSegment() error setting the scroll bar of the segments. Failing silently. Error: ${error.message}`))
+		}
+		
+		prevActiveSegment = activeSegment;
 	}
 }
 
-const getSegmentsScrollYOffset = () : number => {
+const getSegmentScrollY = (segmentElement: HTMLElement) : number => {
+        if (segmentDatas.length === 0) throw new Error(`getSegmentScrollY() error: segmentDatas.length === 0 but needs to be non-empty to compute the scrollY! Failing silentl and returning -1.`);
+	
+        const currSegmentTop = segmentElement.getBoundingClientRect().top;
+	const firstSegmentTop = segmentDatas[0].element.getBoundingClientRect().top;
+	return (currSegmentTop - firstSegmentTop) + getSegmentScrollYOffset();
+}
+
+const getSegmentScrollYOffset = () : number => {
         if (!segmentDatas || segmentDatas.length == 0) {
 	        return 0;
 	}

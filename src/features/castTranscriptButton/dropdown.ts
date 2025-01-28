@@ -20,8 +20,8 @@ interface DropdownSettings {
 export const buildDropdownWithTextTrigger = async (triggerText: string, dropdownOptions: Option[], dropdownContainer: HTMLElement, settings? : DropdownSettings = {}) => {
 	await waitSetInnerHTML(dropdownContainer, DROPDOWN_HTML);
 	
-	const triggerContainer = dropdownContainer.querySelector("#footer #menu #trigger");
-	const dropdownOptionsContainer = dropdownContainer.querySelector("#footer #menu #dropdown #menu");
+	const triggerContainer = dropdownContainer.querySelector("#trigger");
+	const dropdownOptionsContainer = dropdownContainer.querySelector("#dropdown #menu");
 
 	await Promise.allSettled([buildDropdownTextTrigger(triggerText, triggerContainer), buildDropdownOptions(dropdownOptions, dropdownOptionsContainer, settings)])
 
@@ -31,7 +31,6 @@ export const buildDropdownWithTextTrigger = async (triggerText: string, dropdown
 	}
 	
 	attachPermanentDropdownListeners(dropdownContainer, settings);
-	enableDropdownListeners(dropdownContainer);
 }
 
 export const enableDropdownListeners = (dropdownContainer: HTMLElement) => {

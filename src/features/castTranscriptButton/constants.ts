@@ -27,7 +27,7 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 			 </yt-formatted-string>
 			 <div id="subtitle-complex" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
 		     </div>
-		     <div id="action-button" class="style-scope ytd-engagement-panel-title-header-renderer" hidden=""></div>
+		     <div id="action-button" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
 		     <div id="information-button" class="style-scope ytd-engagement-panel-title-header-renderer" hidden=""></div>
 		     <div id="menu" class="style-scope ytd-engagement-panel-title-header-renderer">
 			 <ytd-menu-renderer class="style-scope ytd-engagement-panel-title-header-renderer" safe-area="" menu-active="" style="display: none;">
@@ -152,16 +152,11 @@ export const DROPDOWN_HTML = `
 				    <yt-sort-filter-sub-menu-renderer class="style-scope ytd-transcript-footer-renderer">
 				        <!--css-build:shady-->
 					<!--css-build:shady-->
-					<tp-yt-paper-tooltip class="style-scope yt-sort-filter-sub-menu-renderer" role="tooltip" tabindex="-1" aria-label="tooltip">
-					    <!--css-build:shady-->
-					    <!--css-build:shady-->
-					    <div id="tooltip" class="hidden style-scope tp-yt-paper-tooltip" style-target="tooltip"></div>
-					</tp-yt-paper-tooltip>
 					<yt-dropdown-menu class="style-scope yt-sort-filter-sub-menu-renderer has-items" modern-buttons="">
 					    <!--css-build:shady-->
 					    <!--css-build:shady-->
 					    <tp-yt-paper-menu-button dynamic-align="" expand-sizing-target-for-scrollbars="" class="style-scope yt-dropdown-menu" role="group" aria-haspopup="true" horizontal-align="left" vertical-align="top" aria-disabled="false">
-  				                <!--yte.waitSetInnerHTML.startFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
+  				                <!--yte.waitSetInnerHTML.startFragment=\`yt-sort-filter-sub-menu-renderer yt-dropdown-menu tp-yt-paper-menu-button\`-->
 					        <!--css-build:shady-->
 						<!--css-build:shady-->
 
@@ -184,7 +179,7 @@ export const DROPDOWN_HTML = `
 						</tp-yt-iron-dropdown>
 
 
-  				                <!--yte.waitSetInnerHTML.endFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
+  				                <!--yte.waitSetInnerHTML.endFragment=\`yt-sort-filter-sub-menu-renderer yt-dropdown-menu tp-yt-paper-menu-button\`-->
 					    </tp-yt-paper-menu-button>
 					</yt-dropdown-menu>
 					<div id="notification" class="style-scope yt-sort-filter-sub-menu-renderer" hidden=""></div>

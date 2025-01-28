@@ -47,6 +47,16 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	if (d_ws) debug("[buildCastTranscriptPanel] building header done!");
 
 
+	const languageDropdownContainer2 = castHeader.querySelector("#action-button");
+	const options2 = [{id: "test1", text: "Original2", isInitiallySelected: false}, {id:"test2", text: "test2", isInitiallySelected: true}];
+	const settings2 = {disableHighlightingSelectedOption: true};
+	await buildDropdownWithTextTrigger("triggerText", options2, languageDropdownContainer2, settings2);
+	enableDropdownListeners(languageDropdownContainer2);
+
+
+
+
+
 	if (d_ws) debug("[buildCastTranscriptPanel] building content");
 	const castContent = castTranscriptPanel.querySelector("#content");
 	await waitSetInnerHTML(castContent, CAST_TRANSCRIPT_BODY_HTML);

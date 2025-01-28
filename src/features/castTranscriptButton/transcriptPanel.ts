@@ -1,6 +1,7 @@
 import { debug, browserColorLog, createStyledElement } from "@/src/utils/utilities";
 
-import { CAST_TRANSCRIPT_PANEL_HTML, CAST_TRANSCRIPT_HEADER_HTML, CAST_TRANSCRIPT_BODY_HTML } from "./constants";
+import { CAST_TRANSCRIPT_PANEL_HTML, CAST_TRANSCRIPT_HEADER_HTML, CAST_TRANSCRIPT_BODY_HTML, DROPDOWN_MENU_HTML } from "./constants";
+import { buildMenuWithTextTrigger } from "./dropdown"
 import { loadTranscriptSegments} from "./transcriptSegments";
 import { createElement, d_ws, listenAttributePressed, registerGlobalClickListener, waitSetInnerHTML } from "./utils";
 
@@ -48,7 +49,11 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 
 	if (d_ws) debug("[buildCastTranscriptPanel] building content");
 	const castContent = castTranscriptPanel.querySelector("#content");
-	await waitSetInnerHTML(castContent,  CAST_TRANSCRIPT_BODY_HTML);
+	await waitSetInnerHTML(castContent, CAST_TRANSCRIPT_BODY_HTML);
+
+
+	await buildMenuWithTextTrigger("triggerText", [{id: "test1", text: "Original2"}, {id:"test2", text: "test2"}], castContent.querySelector("#footer #menu"));
+	
 	if (d_ws) debug("[buildCastTranscriptPanel] building content initialized -- attaching listeners");
 	attachContentListeners(castTranscriptPanel);
 	if (d_ws) debug("[buildCastTranscriptPanel] building content done!");

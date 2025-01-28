@@ -138,6 +138,17 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 			        <!--css-build:shady-->
 				<!--css-build:shady-->
 				<div id="menu" class="style-scope ytd-transcript-footer-renderer">
+			        </div>
+			    </ytd-transcript-footer-renderer>
+			</div>
+                     </ytd-transcript-search-panel-renderer>
+		 </div>
+		 <div id="footer" class="style-scope ytd-transcript-renderer"></div>
+	     </ytd-transcrpt-renderer>
+	`;
+
+
+export const DROPDOWN_MENU_HTML = `
 				    <yt-sort-filter-sub-menu-renderer class="style-scope ytd-transcript-footer-renderer">
 				        <!--css-build:shady-->
 					<!--css-build:shady-->
@@ -155,40 +166,8 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 						<!--css-build:shady-->
 
 
-
-
-
-
-
 						<div id="trigger" class="style-scope tp-yt-paper-menu-button">
-						    <tp-yt-paper-button id="label" class="dropdown-trigger style-scope yt-dropdown-menu" slot="dropdown-trigger" style-target="host" role="button" tabindex="0" animated="" elevation="0" aria-disabled="false" aria-expanded="false">
-						        <!--css-build:shady-->
-							<!--css-build:shady-->
-							<dom-if class="style-scope yt-dropdown-menu"><template is="dom-if"></template></dom-if>
-							<div id="label-text" style-target="label-text" class="style-scope yt-dropdown-menu">Original</div>
-							<yt-icon id="label-icon" icon="expand" class="style-scope yt-dropdown-menu">
-							    <!--css-build:shady-->
-							    <!--css-build:shady-->
-							    <span class="yt-icon-shape style-scope yt-icon yt-spec-icon-shape">
-							        <div style="width: 100%; height: 100%; display: block; fill: currentcolor;">
-								    <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;"><path d="m18 9.28-6.35 6.35-6.37-6.35.72-.71 5.64 5.65 5.65-5.65z"></path></svg>
-								</div>
-						            </span>
-							</yt-icon>
-						        <dom-if class="style-scope yt-dropdown-menu"><template is="dom-if"></template></dom-if>
-
-							<tp-yt-paper-ripple class="style-scope tp-yt-paper-button">
-							    <!--css-build:shady-->
-							    <!--css-build:shady-->
-							    <div id="background" class="style-scope tp-yt-paper-ripple"></div>
-							    <div id="waves" class="style-scope tp-yt-paper-ripple"></div>
-							</tp-yt-paper-ripple>
-						    </tp-yt-paper-button>
 						</div>
-
-
-
-
 
 
 						<tp-yt-iron-dropdown id="dropdown" class="style-scope tp-yt-paper-menu-button" horizontal-align="left" vertical-align="top" aria-disabled="false" aria-hidden="true" style="outline: none; display: none;">
@@ -198,60 +177,6 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 						    <div id="contentWrapper" class="style-scope tp-yt-iron-dropdown">
 							<div slot="dropdown-content" class="dropdown-content style-scope tp-yt-paper-menu-button">
 							    <tp-yt-paper-listbox id="menu" class="dropdown-content style-scope yt-dropdown-menu" slot="dropdown-content" role="listbox" tabindex="0">
-     				                                <!--yte.waitSetInnerHTML.startFragment=\`#menu\`-->
-							        <!--css-build:shady-->
-								<!--css-build:shady-->
-
-
-
-
-
-								<a class="yt-simple-endpoint style-scope yt-dropdown-menu iron-selected" aria-selected="true" tabindex="0">
- 								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false">
-								        <!--css-build:shady-->
-									<!--css-build:shady-->
-									<tp-yt-paper-item-body class="style-scope yt-dropdown-menu">
-									    <!--css-build:shady-->
-									    <!--css-build:shady-->
-									    <div id="item-with-badge" class="style-scope yt-dropdown-menu">
-										<div class="item style-scope yt-dropdown-menu">
-										    Original
-										    <span class="notification style-scope yt-dropdown-menu" hidden=""></span>
-										</div>
-										<ytd-badge-supported-renderer class="style-scope yt-dropdown-menu" disable-upgrade="" hidden=""></ytd-badge-supported-renderer>
-									    </div>
-									    <div secondary="" id="subtitle" class="style-scope yt-dropdown-menu" hidden=""></div>
-									</tp-yt-paper-item-body>
-								        <yt-reload-continuation class="style-scope yt-dropdown-menu"></yt-reload-continuation>
-								    </tp-yt-paper-item>
-						                </a>
-
-								<a class="yt-simple-endpoint style-scope yt-dropdown-menu" tabindex="-1" aria-selected="false">
-								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false">
-								        <!--css-build:shady-->
-									<!--css-build:shady-->
-								        <tp-yt-paper-item-body class="style-scope yt-dropdown-menu">
-									    <!--css-build:shady-->
-									    <!--css-build:shady-->
-									    <div id="item-with-badge" class="style-scope yt-dropdown-menu">
-									        <div class="item style-scope yt-dropdown-menu">
-										    English
-										    <span class="notification style-scope yt-dropdown-menu" hidden=""></span>
-									        </div>
-									        <ytd-badge-supported-renderer class="style-scope yt-dropdown-menu" disable-upgrade="" hidden=""></ytd-badge-supported-renderer>
-									    </div>
-									    <div secondary="" id="subtitle" class="style-scope yt-dropdown-menu" hidden=""></div>
-								        </tp-yt-paper-item-body>
-								        <yt-reload-continuation class="style-scope yt-dropdown-menu"></yt-reload-continuation>
-								    </tp-yt-paper-item>
-								</a>
-
-
-
-
-
-								<dom-repeat id="repeat" class="style-scope yt-dropdown-menu"><template is="dom-repeat"></template></dom-repeat>
-     				                                <!--yte.waitSetInnerHTML.endFragment=\`#menu\`-->
  							    </tp-yt-paper-listbox>
 						        </div>
 						    </div>
@@ -260,19 +185,8 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 
 
   				                <!--yte.waitSetInnerHTML.endFragment=\`#footer #menu tp-yt-paper-menu-button\`-->
-
-
-
 					    </tp-yt-paper-menu-button>
 					</yt-dropdown-menu>
 					<div id="notification" class="style-scope yt-sort-filter-sub-menu-renderer" hidden=""></div>
-				    </yt-sort-filter-sub-menu-renderer>
-			        </div>
-			    </ytd-transcript-footer-renderer>
-			</div>
-                     </ytd-transcript-search-panel-renderer>
-		 </div>
-		 <div id="footer" class="style-scope ytd-transcript-renderer"></div>
-	     </ytd-transcrpt-renderer>
-	`;
-
+				    </yt-sort-filter-sub-menu-renderer>`;
+				    

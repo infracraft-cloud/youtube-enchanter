@@ -27,8 +27,8 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 			 </yt-formatted-string>
 			 <div id="subtitle-complex" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
 		     </div>
-		     <div id="action-button" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
-		     <div id="information-button" class="style-scope ytd-engagement-panel-title-header-renderer" hidden=""></div>
+		     <div id="language-dropdown" class="style-scope ytd-engagement-panel-title-header-renderer" style="margin-left: 8px; margin-right: 8px;"></div>
+		     <div id="mode-dropdown" class="style-scope ytd-engagement-panel-title-header-renderer" style="margin-left: 8px; margin-right: 8px;"></div>
 		     <div id="menu" class="style-scope ytd-engagement-panel-title-header-renderer">
 			 <ytd-menu-renderer class="style-scope ytd-engagement-panel-title-header-renderer" safe-area="" menu-active="" style="display: none;">
 			     <!--css-build:shady-->

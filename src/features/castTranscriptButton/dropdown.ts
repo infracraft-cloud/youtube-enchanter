@@ -4,20 +4,21 @@ import { createElement, removeGlobalClickListener, listenAttributePressed, waitS
 import { DROPDOWN_HTML } from "./constants";
 
 
-interface Option {
+interface DropdownOption {
        id: string;
        text: string;
        isInitiallySelected: boolean;
-}
+       triggerText?: string;
+};
 
 interface DropdownSettings {
        // All of these flags are boolean and default to false
        keepTriggerTextConstant: boolean;
        setInitialTriggerTextAsInitialSelectedOption: boolean;
        disableHighlightingSelectedOption: boolean;
-}
+};
 
-export const buildDropdownWithTextTrigger = async (triggerText: string, dropdownOptions: Option[], dropdownContainer: HTMLElement, settings? : DropdownSettings = {}) => {
+export const buildDropdownWithTextTrigger = async (triggerText: string, dropdownOptions: DropdownOption[], dropdownContainer: HTMLElement, settings? : DropdownSettings = {}) => {
 	await waitSetInnerHTML(dropdownContainer, DROPDOWN_HTML);
 	
 	const triggerContainer = dropdownContainer.querySelector("#trigger");
@@ -27,7 +28,7 @@ export const buildDropdownWithTextTrigger = async (triggerText: string, dropdown
 
 	if (settings && settings.setInitialTriggerTextAsInitialSelectedOption) {
 	           const firstActiveOption = dropdownOptions.find(option => option.isInitiallySelected);
-		   setTriggerText(firstActiveOption.text, triggerContainer);
+		   if (firstActiveOption) setTriggerText(firstActiveOption.text, triggerContainer);
 	}
 	
 	attachPermanentDropdownListeners(dropdownContainer, settings);
@@ -80,7 +81,7 @@ const buildDropdownTextTrigger = async (text: string, triggerContainer: HTMLElem
 	return waitSetInnerHTML(triggerContainer, triggerHTML);
 }
 
-const buildDropdownOptions = async (options: Option[], dropdownOptionsContainer: HTMLElement, settings : DropdownSettings) => {
+const buildDropdownOptions = async (options: DropdownOption[], dropdownOptionsContainer: HTMLElement, settings : DropdownSettings) => {
        let optionsHTML = `
 							        <!--css-build:shady-->
 								<!--css-build:shady-->`;
@@ -89,7 +90,7 @@ const buildDropdownOptions = async (options: Option[], dropdownOptionsContainer:
        for (const option of options) {
        	     optionsHTML += `
 								<a class="yt-simple-endpoint style-scope yt-dropdown-menu${option.isInitiallySelected && !(settings.disableHighlightingSelectedOption) ? " iron-selected" : ""}" aria-selected="true" tabindex="0" id="${option.id}">
- 								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false">
+ 								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false"${option.triggerText ? ` trigger-text="` + option.triggerText + `"` : ""}>
 								        <!--css-build:shady-->
 									<!--css-build:shady-->
 									<tp-yt-paper-item-body class="style-scope yt-dropdown-menu">
@@ -131,7 +132,7 @@ const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settin
 			 if (curr.isSameNode(mutation.target)) {
 			       if (!settings.disableHighlightingSelectedOption) curr.parentNode.classList.add("iron-selected");
 
-			       if (!settings.keepTriggerTextConstant) setTriggerText(curr.textContent.trim(), trigger);
+			       if (!settings.keepTriggerTextConstant) setTriggerText(curr, trigger);
 			 } else {
 			       curr.parentNode.classList.remove("iron-selected");
 			 }
@@ -144,11 +145,15 @@ const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settin
 	listenAttributePressed(trigger, (mutation) => {setDropdownVisibility(true, optionsDropdown);});
 }
 
-const setTriggerText = (text: string, trigger: HTMLElement) => {
+const setTriggerText = (option: HTMLElement, trigger: HTMLElement) => {
 	const triggerText = trigger.querySelector("#label-text");
 	if (!triggerText) throw new Error("setTriggerText() error: cannot find trigger triggerText");
 
-	triggerText.textContent = text;
+	if (option.hasAttribute("trigger-text")) {
+	     triggerText.textContent = option.getAttribute("trigger-text");
+	} else {
+	     triggerText.textContent = option.textContent.trim();
+	}
 }
 
 

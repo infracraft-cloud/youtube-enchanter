@@ -188,7 +188,7 @@ export const lazyLoadGlobalClickListener = () => {
 }
 
 export const createErrorToast = (errorMsg: Error) => {
-        alert(`Error toast message: {error}`);
+        alert(`Error toast message: ${error}`);
 }
 
 export const getVideoContainer = () : HTMLElement => {

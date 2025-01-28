@@ -18,6 +18,7 @@ interface SegmentData {
 export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
 	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")]);
 
+	/*
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
 	// we don't want to synchronously wait for the result.
@@ -58,6 +59,7 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
 	       await setSegments(castTranscriptPanel, [createFakeSegmentData(`Network request error: ${publicErrorMsg}`)]);
 	});
+	*/
 }
 
 const createFakeSegmentData = (caption: string) : SegmentData => {

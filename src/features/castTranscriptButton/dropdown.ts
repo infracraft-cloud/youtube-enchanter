@@ -1,25 +1,58 @@
 
-import { createElement, waitSetInnerHTML } from "./utils";
+import { createElement, removeGlobalClickListener, listenAttributePressed, waitSetInnerHTML, registerGlobalClickListener } from "./utils";
 
-import { DROPDOWN_MENU_HTML } from "./constants";
+import { DROPDOWN_HTML } from "./constants";
 
 
 interface Option {
        id: string;
        text: string;
+       isInitiallySelected: boolean;
 }
 
-export const buildMenuWithTextTrigger = async (triggerText: string, menuOptions: Option[], menuContainer: HTMLElement) => {
-	await waitSetInnerHTML(menuContainer, DROPDOWN_MENU_HTML);
+interface DropdownSettings {
+       // All of these flags are boolean and default to false
+       keepTriggerTextConstant: boolean;
+       setInitialTriggerTextAsInitialSelectedOption: boolean;
+       disableHighlightingSelectedOption: boolean;
+}
+
+export const buildDropdownWithTextTrigger = async (triggerText: string, dropdownOptions: Option[], dropdownContainer: HTMLElement, settings? : DropdownSettings = {}) => {
+	await waitSetInnerHTML(dropdownContainer, DROPDOWN_HTML);
 	
-	const triggerContainer = menuContainer.querySelector("#footer #menu #trigger");
-	const menuOptionsContainer = menuContainer.querySelector("#footer #menu #dropdown #menu");
+	const triggerContainer = dropdownContainer.querySelector("#footer #menu #trigger");
+	const dropdownOptionsContainer = dropdownContainer.querySelector("#footer #menu #dropdown #menu");
 
-	await Promise.allSettled([buildMenuTextTrigger(triggerText, triggerContainer), buildMenuOptions(menuOptions, menuOptionsContainer)])
-	return
+	await Promise.allSettled([buildDropdownTextTrigger(triggerText, triggerContainer), buildDropdownOptions(dropdownOptions, dropdownOptionsContainer, settings)])
+
+	if (settings && settings.setInitialTriggerTextAsInitialSelectedOption) {
+	           const firstActiveOption = dropdownOptions.find(option => option.isInitiallySelected);
+		   setTriggerText(firstActiveOption.text, triggerContainer);
+	}
+	
+	attachPermanentDropdownListeners(dropdownContainer, settings);
+	enableDropdownListeners(dropdownContainer);
 }
 
-const buildMenuTextTrigger = async (text: string, triggerContainer: HTMLElement) => {
+export const enableDropdownListeners = (dropdownContainer: HTMLElement) => {
+	const trigger = dropdownContainer.querySelector("tp-yt-paper-button#label");
+	if (!trigger) throw new Error("enableDropdownListeners() error: cannot find dropdownContainer trigger");
+	const optionsDropdown = dropdownContainer.querySelector("tp-yt-iron-dropdown#dropdown");
+	if (!optionsDropdown) throw new Error("enableDropdownListeners() error: cannot find dropdownContainer optionsDropdown");
+	
+	registerGlobalClickListener([trigger, optionsDropdown], (withinBoundaries) => {if (!withinBoundaries) setDropdownVisibility(false, optionsDropdown);});
+}
+
+export const disableDropdownListeners = (dropdownContainer: HTMLElement) => {
+	const trigger = dropdownContainer.querySelector("tp-yt-paper-button#label");
+	if (!trigger) throw new Error("enableDropdownListeners() error: cannot find dropdownContainer trigger");
+	const optionsDropdown = dropdownContainer.querySelector("tp-yt-iron-dropdown#dropdown");
+	if (!optionsDropdown) throw new Error("enableDropdownListeners() error: cannot find dropdownContainer optionsDropdown");
+
+	removeGlobalClickListener([trigger, optionsDropdown]);
+}
+
+const buildDropdownTextTrigger = async (text: string, triggerContainer: HTMLElement) => {
        let triggerHTML = `
 						    <tp-yt-paper-button id="label" class="dropdown-trigger style-scope yt-dropdown-menu" slot="dropdown-trigger" style-target="host" role="button" tabindex="0" animated="" elevation="0" aria-disabled="false" aria-expanded="false">
 						        <!--css-build:shady-->
@@ -48,7 +81,7 @@ const buildMenuTextTrigger = async (text: string, triggerContainer: HTMLElement)
 	return waitSetInnerHTML(triggerContainer, triggerHTML);
 }
 
-const buildMenuOptions = async (options: Option[], menuOptionsContainer: HTMLElement) => {
+const buildDropdownOptions = async (options: Option[], dropdownOptionsContainer: HTMLElement, settings : DropdownSettings) => {
        let optionsHTML = `
 							        <!--css-build:shady-->
 								<!--css-build:shady-->`;
@@ -56,7 +89,7 @@ const buildMenuOptions = async (options: Option[], menuOptionsContainer: HTMLEle
 
        for (const option of options) {
        	     optionsHTML += `
-								<a class="yt-simple-endpoint style-scope yt-dropdown-menu iron-selected" aria-selected="true" tabindex="0" id="${option.id}">
+								<a class="yt-simple-endpoint style-scope yt-dropdown-menu${option.isInitiallySelected && !(settings.disableHighlightingSelectedOption) ? " iron-selected" : ""}" aria-selected="true" tabindex="0" id="${option.id}">
  								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false">
 								        <!--css-build:shady-->
 									<!--css-build:shady-->
@@ -81,6 +114,62 @@ const buildMenuOptions = async (options: Option[], menuOptionsContainer: HTMLEle
 								<dom-repeat id="repeat" class="style-scope yt-dropdown-menu"><template is="dom-repeat"></template></dom-repeat>`;
 
 
-       return waitSetInnerHTML(menuOptionsContainer, optionsHTML);
+       return waitSetInnerHTML(dropdownOptionsContainer, optionsHTML);
 }
 
+const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settings: DropdownSettings) => {
+	const trigger = dropdownContainer.querySelector("tp-yt-paper-button#label");
+	if (!trigger) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer trigger");
+	const optionsDropdown = dropdownContainer.querySelector("tp-yt-iron-dropdown#dropdown");
+	if (!optionsDropdown) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer optionsDropdown");
+	const options = dropdownContainer.querySelectorAll("#dropdown tp-yt-paper-item[role=option]");
+	if (!options) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer options");
+	
+	for (const option of options) {
+	    listenAttributePressed(option, (mutation) => {
+	         if (!settings.disableHighlightingSelectedOption || !settings.keepTriggerTextConstant) {
+		     for (const curr of options) {
+			 if (curr.isSameNode(mutation.target)) {
+			       if (!settings.disableHighlightingSelectedOption) curr.parentNode.classList.add("iron-selected");
+
+			       if (!settings.keepTriggerTextConstant) setTriggerText(curr.textContent.trim(), trigger);
+			 } else {
+			       curr.parentNode.classList.remove("iron-selected");
+			 }
+		     }
+		 }
+		 setDropdownVisibility(false, optionsDropdown);
+	    });
+	}
+
+	listenAttributePressed(trigger, (mutation) => {setDropdownVisibility(true, optionsDropdown);});
+}
+
+const setTriggerText = (text: string, trigger: HTMLElement) => {
+	const triggerText = trigger.querySelector("#label-text");
+	if (!triggerText) throw new Error("setTriggerText() error: cannot find trigger triggerText");
+
+	triggerText.textContent = text;
+}
+
+
+const setDropdownVisibility = (visible: boolean, dropdown: HTMLElement) => {
+	const activeOption = dropdown.querySelector("a[class~=iron-selected] tp-yt-paper-item");
+	const parentRect = dropdown.parentNode.getBoundingClientRect();
+	 
+	if (visible) {
+	     dropdown.style = `outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202;`;
+	     dropdown.removeAttribute("aria-hidden");
+	     activeOption ? activeOption.focus() : dropdown.focus();
+
+	     // Now that the dropdown has been rendered, we know its width/height, so check if it is spilling out of the viewport. If so, reposition it back in the viewport
+	     const rect = dropdown.getBoundingClientRect();
+	     const adjustX = Math.min(0, window.innerWidth - (rect.right + 20));
+	     const adjustY = Math.min(0, window.innerHeight - (rect.bottom + 20));
+	     dropdown.style = `outline: none; position: fixed; left: ${parentRect.left + adjustX}px; top: ${parentRect.top + adjustY}px; z-index: 2202;`;
+	} else {
+	     dropdown.style = "outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202; display: none;";
+	     dropdown.setAttribute("aria-hidden", "true");
+	     activeOption ? activeOption.blur() : dropdown.blur();
+	}
+}

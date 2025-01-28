@@ -148,7 +148,7 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 	`;
 
 
-export const DROPDOWN_MENU_HTML = `
+export const DROPDOWN_HTML = `
 				    <yt-sort-filter-sub-menu-renderer class="style-scope ytd-transcript-footer-renderer">
 				        <!--css-build:shady-->
 					<!--css-build:shady-->

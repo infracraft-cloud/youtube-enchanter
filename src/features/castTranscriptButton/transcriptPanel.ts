@@ -1,7 +1,7 @@
 import { debug, browserColorLog, createStyledElement } from "@/src/utils/utilities";
 
 import { CAST_TRANSCRIPT_PANEL_HTML, CAST_TRANSCRIPT_HEADER_HTML, CAST_TRANSCRIPT_BODY_HTML, DROPDOWN_MENU_HTML } from "./constants";
-import { buildMenuWithTextTrigger } from "./dropdown"
+import { buildDropdownWithTextTrigger, enableDropdownListeners, disableDropdownListeners } from "./dropdown"
 import { loadTranscriptSegments} from "./transcriptSegments";
 import { createElement, d_ws, listenAttributePressed, registerGlobalClickListener, waitSetInnerHTML } from "./utils";
 
@@ -51,8 +51,10 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	const castContent = castTranscriptPanel.querySelector("#content");
 	await waitSetInnerHTML(castContent, CAST_TRANSCRIPT_BODY_HTML);
 
-
-	await buildMenuWithTextTrigger("triggerText", [{id: "test1", text: "Original2"}, {id:"test2", text: "test2"}], castContent.querySelector("#footer #menu"));
+	const languageDropdownContainer = castContent.querySelector("#footer #menu");
+	const options = [{id: "test1", text: "Original2", isInitiallySelected: false}, {id:"test2", text: "test2", isInitiallySelected: true}];
+	const settings = {disableHighlightingSelectedOption: true};
+	await buildDropdownWithTextTrigger("triggerText", options, languageDropdownContainer, settings);
 	
 	if (d_ws) debug("[buildCastTranscriptPanel] building content initialized -- attaching listeners");
 	attachContentListeners(castTranscriptPanel);
@@ -79,66 +81,8 @@ const attachContentListeners = (castTranscriptPanel: HTMLElement) => {
 	if (!castContent) throw new Error("attachContentListeners() error: cannot find castContent");
 	
 	// Language dropdown menu
-
-	const languageDropdown = castContent.querySelector("#footer #menu tp-yt-paper-menu-button");
-	if (!languageDropdown) throw new Error("attachContentListeners() error: cannot find castContent languageDropdown");
-	const languageDropdownList = languageDropdown.querySelector("tp-yt-iron-dropdown#dropdown");
-	if (!languageDropdownList) throw new Error("attachContentListeners() error: cannot find castContent languageDropdownList");
-	const languageDropdownTrigger = languageDropdown.querySelector("tp-yt-paper-button#label");
-	if (!languageDropdownTrigger) throw new Error("attachContentListeners() error: cannot find castContent languageDropdownTrigger");
-	const languageDropdownOptions = languageDropdown.querySelectorAll("#dropdown tp-yt-paper-item[role=option]");
-	if (!languageDropdownOptions) throw new Error("attachContentListeners() error: cannot find castContent languageDropdownOptions");
-	
-	for (const languageDropdownOption of languageDropdownOptions) {
-	    listenAttributePressed(languageDropdownOption, (mutation) => {
-		 for (const curr of languageDropdownOptions) {
-		     if (curr.isSameNode(mutation.target)) {
-			   curr.parentNode.classList.add("iron-selected");
-			   const optionText = curr.querySelector("#item-with-badge").textContent.trim();
-			   
-			   const triggerText = languageDropdownTrigger.querySelector("#label-text");
-			   if (triggerText) {
-			         triggerText.textContent = optionText;
-			   } else {
-			         browserColorLog("languageDropdownOption.pressed() error: cannot find triggerText, unable to update the text of languageDropdownTrigger!", "FgRed");
-			   }
-		     } else {
-			   curr.parentNode.classList.remove("iron-selected");
-		     }
-		 }
-		 setLanguageDropdownListVisibility(false, languageDropdownList);
-	    });
-	}
-
-	registerGlobalClickListener([languageDropdownTrigger, languageDropdownList], (withinBoundaries) => {if (!withinBoundaries) setLanguageDropdownListVisibility(false, languageDropdownList);});
-	listenAttributePressed(languageDropdownTrigger, (mutation) => {setLanguageDropdownListVisibility(true, languageDropdownList);});
-}
-
-const setLanguageDropdownListVisibility = (visible: boolean, languageDropdownList?: HTMLElement) => {
-        if (!languageDropdownList) languageDropdownList = document.querySelector("ytd-engagement-panel-section-list-renderer[target-id=engagement-panel-cast-transcript] #footer #menu tp-yt-iron-dropdown#dropdown");
-	if (!languageDropdownList) {
-	     console.log("setLanguageDropdownListVisibility() error: could not find languageDropdownList");
-	     return;
-	}
-
-	const activeOption = languageDropdownList.querySelector("a[class~=iron-selected] tp-yt-paper-item");
-	const parentRect = languageDropdownList.parentNode.getBoundingClientRect();
-	 
-	if (visible) {
-	     languageDropdownList.style = `outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202;`;
-	     languageDropdownList.removeAttribute("aria-hidden");
-	     activeOption ? activeOption.focus() : languageDropdownList.focus();
-
-	     // Now that the dropdown has been rendered, we know its width/height, so check if it is spilling out of the viewport. If so, reposition it back in the viewport
-	     const rect = languageDropdownList.getBoundingClientRect();
-	     const adjustX = Math.min(0, window.innerWidth - (rect.right + 20));
-	     const adjustY = Math.min(0, window.innerHeight - (rect.bottom + 20));
-	     languageDropdownList.style = `outline: none; position: fixed; left: ${parentRect.left + adjustX}px; top: ${parentRect.top + adjustY}px; z-index: 2202;`;
-	} else {
-	     languageDropdownList.style = "outline: none; position: fixed; left: ${parentRect.left}px; top: ${parentRect.top}px; z-index: 2202; display: none;";
-	     languageDropdownList.setAttribute("aria-hidden", "true");
-	     activeOption ? activeOption.blur() : languageDropdownList.blur();
-	}
+	const languageDropdownContainer = castContent.querySelector("#footer #menu");
+	enableDropdownListeners(languageDropdownContainer);
 }
 
 const getPanelsContainer = () : HTMLEelement => {

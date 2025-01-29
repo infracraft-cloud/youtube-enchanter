@@ -85,7 +85,7 @@ const createFakeSegmentData = (caption: string) : SegmentData => {
 	       startTime_s: -1,
 	       endTime_s: -1,
 	       element: createEmptySegment(),
-	       translations: [{fromLang: "en", toLang: "spanish", fullTranslation: {indexes: [{start: 0, end: caption.length}], translation: "blahblahblah", subnotes: [{indexes: [{start: 1, end: 2}, {start: 3, end: 4}], translation: "1111", subnotes: []}, {indexes: [{start: 2, end: 3}], translation: "222", subnotes: []}]}}]
+	       translations: [{fromLang: "en", toLang: "spanish", fullTranslation: {indexes: [{start: 0, end: caption.length}], translation: "blahblahblah", subnotes: [{indexes: [{start: 1, end: 2}, {start: 4, end: 5}], translation: "1111", subnotes: []}, {indexes: [{start: 2, end: 3}], translation: "222", subnotes: []}]}}]
        };
 }
 
@@ -131,6 +131,7 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
        
        updateActiveSegment(segmentListRenderer, videoContainer.getCurrentTime());
        attachSegmentListeners(segmentListRenderer, videoContainer);
+       attachTranslateListeners(segmentsContainer);
 }
 
 const clearSegments = () => {
@@ -138,6 +139,7 @@ const clearSegments = () => {
        	      removeGlobalClickListener([segmentData.element]);
        }
        eventManager.removeEventListeners("castTranscriptActiveSegments")
+       removeTranslateListeners();
        segmentDatas = []
 }
 
@@ -236,7 +238,7 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 	uniqueIdxs.add(0);
 	uniqueIdxs.add(segmentData.caption.length);
 	for (const translation of segmentData.translations) {
-	    recurseTnotes(translation.fullTranslation, 0, (curr, level) => {
+	    recurseTnotes(translation.fullTranslation, (curr, level, path) => {
 	    	for (const index of curr.indexes) {
 		    uniqueIdxs.add(index.start); uniqueIdxs.add(index.end);
 		}
@@ -260,7 +262,7 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 	
 	console.log(`"TEST2 ${captionPieces}`);
 	
-        let html = `<table style="border-spacing: 0;">
+        let html = `<table id="caption-content" style="border-spacing: 0; border-collapse: separate;">
 	                <tbody>`;
 
 	html += `        <tr language="original" depth="0">`;
@@ -276,17 +278,17 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 	    if (!translation.fullTranslation) throw new Error(`buildCaptionInnerHTML() error: malformed translation data with missing .fullTranslation field: {translation}`);
 	    
 	    const depth_2_noteTdIdxs = []
-	    recurseTnotes(translation.fullTranslation, 0, (curr, depth) => {	
+	    recurseTnotes(translation.fullTranslation, (tnote, depth, path) => {	
 	        if (!(depth in depth_2_noteTdIdxs)) depth_2_noteTdIdxs[depth] = [];
 	        const noteTdIdxs = depth_2_noteTdIdxs[depth];
 		
 	    	// tnote.startIdx and captionSliceIdxs are string indexes
 		// We must convert these to <td> indexes
-		for (const index of curr.indexes) {
+		for (const index of tnote.indexes) {
 		    const tdStartIdx = captionSliceIdxs.findLastIndex(idx => idx <= index.start );
 		    const tdEndIdx = captionSliceIdxs.findIndex(idx => idx >= index.end );
 
-		    noteTdIdxs.push({tnote: curr, tdStartIdx: tdStartIdx, tdEndIdx: tdEndIdx});
+		    noteTdIdxs.push({tnote: tnote, tdStartIdx: tdStartIdx, tdEndIdx: tdEndIdx, path: path});
 		}
 	    }, null);
 	    for (const [depth, noteTdIdxs] of depth_2_noteTdIdxs.entries()) {
@@ -296,18 +298,25 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 
 	    console.log(`TEST3: ${depth_2_noteTdIdxs} / ${maxDepth}`);
 	    for (let depth = 0; depth <= maxDepth; depth++) {
-		html += `        <tr language="${translation.toLang}" depth="${depth}">`;
+	        if (depth > 0) html += `        <tr class="separator" style="height: 4px">`;
+		html += `        <tr language="${translation.toLang}" depth="${depth}" style="height: 4px;">`;
 	        if (depth in depth_2_noteTdIdxs) {
 		    const noteTdIdxs = depth_2_noteTdIdxs[depth]
 		    
 		    let tdHtml = ""
 		    let firstSeenTdStartIdx = null;
 		    let lastSeenTdEndIdx = null;
+		    let prevEndIdx = null;
 		    for (const noteTdIdx of noteTdIdxs) {
 			if (firstSeenTdStartIdx == null) firstSeenTdStartIdx = noteTdIdx.tdStartIdx;
 			lastSeenTdEndIdx = noteTdIdx.tdEndIdx;
 
-			tdHtml += `<td colspan="${noteTdIdx.tdEndIdx - noteTdIdx.tdStartIdx}" style="text-align: center; vertical-align: middle;">${noteTdIdx.tnote.translation}</td>`;
+			if (prevEndIdx && prevEndIdx < noteTdIdx.tdStartIdx) {
+    			    tdHtml += `<td colspan="${noteTdIdx.tdStartIdx - prevEndIdx}"></td>`;
+			}
+			
+			tdHtml += `<td colspan="${noteTdIdx.tdEndIdx - noteTdIdx.tdStartIdx}" style="text-align: center; vertical-align: middle; background-color: royalBlue; border-left: 1px solid transparent; border-right: 1px solid transparent; -webkit-background-clip: padding; -moz-background-clip: padding; background-clip:padding-box;" path="${noteTdIdx.path.join('-')}"></td>`;
+			prevEndIdx = noteTdIdx.tdEndIdx;
 		    }
 
 		    if (firstSeenTdStartIdx && firstSeenTdStartIdx !== 0) {
@@ -327,16 +336,76 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 
 	html += `    </tbody>
 	         </table>`;
+
+
+	html += `<div id="translate-note-panel">`;
+	for (const translation of segmentData.translations) {
+	    recurseTnotes(translation.fullTranslation, (tnote, depth, path) => {
+	        html += `    <div id="tnote" language="${translation.toLang}" path="${path.join('-')}" style="display: none;">
+		                 ${tnote.translation}<a id="hide-tnote-button" style="margin-left: 16px; color: crimson">X</a> 
+		             </div>`;
+	    }, null);
+	}
+	html += `</div>`;
 		 
 	return html;
 }
 
-const recurseTnotes = (tnote: TNote, depth: number = 0, preCallback: (curr: TNote, depth: number) => void, postCallback: (curr: TNote, depth: number) => void) => {
-       if (preCallback) preCallback(tnote, depth);
+const attachTranslateListeners = () => {
+       for (const segmentData of segmentDatas) {
+       	   const translateNotePanel = segmentData.element.querySelector("#translate-note-panel");
+	   
+           const rows = segmentData.element.querySelectorAll("#caption-content tr");
+	   for (const row of rows) {
+	       const language = row.getAttribute("language");
+	       const tnoteButtons = row.querySelectorAll("td[path]");
+	       for (const tnoteButton of tnoteButtons) {
+	           const path = tnoteButton.getAttribute("path");
+		   const translateNote = translateNotePanel.querySelector(`div[language=${language}][path="${path}"]`);
 
-       tnote.subnotes.forEach(subnote => recurseTnotes(subnote, depth+1, preCallback, postCallback));
+		   tnoteButton.onclick = () => {translateNote.style.display = "";};
+	       }
+	   }
+	   
+	   const tnotes = segmentData.element.querySelectorAll("#tnote");
+	   for (const tnote of tnotes) {
+	       const hideTnoteButton = tnote.querySelector("#hide-tnote-button");
+	       hideTnoteButton.onclick = () => {tnote.style.display = "none";}
+	   }
+       }
+}
 
-       if (postCallback) postCallback(tnote, depth);
+const removeTranslateListeners = () => {
+       for (const segmentData of segmentDatas) {   
+           const tnoteButtons = segmentData.element.querySelectorAll("#caption-content td[path]");
+	   tnoteButtons.forEach(elem => elem.onclick = null);
+	      
+	   const hideTnoteButtons = segmentData.element.querySelectorAll("#hide-tnote-button");
+	   hideTnoteButtons.forEach(elem => elem.onclick = null);
+       }
+}
+
+const recurseTnotes = (tnote: TNote, preCallback: (tnote: TNote, depth: number, path: number[]) => void, postCallback: (tnote: TNote, depth: number, path: number[]) => void) => {
+       const path = [0];
+       _recurseTnotes(tnote, 0, path, preCallback, postCallback);
+}
+
+const _recurseTnotes = (tnote: TNote, depth: number = 0, path: number[] = [], preCallback: (tnote: TNote, depth: number, path: number[]) => void, postCallback: (tnote: TNote, depth: number, path: number[]) => void) => {
+       // Can't guarantee how users will use 'path' in the callback, so
+       // it is safer to make a copy of it so that the user doesn't
+       // mess up the actual path during the recursion.
+       if (preCallback) preCallback(tnote, depth, Array.from(path));
+
+       for (const [idx, subnote] of tnote.subnotes.entries()) {
+       	   path.push(idx);
+	   _recurseTnotes(subnote, depth+1, path, preCallback, postCallback);
+	   path.pop();
+       }
+
+       // Can't guarantee how users will use 'path' in the callback, so
+       // it is safer to make a copy of it so that the user doesn't
+       // mess up the actual path during the recursion.
+       if (postCallback) postCallback(tnote, depth, Array.from(path));
 }
 
 /*

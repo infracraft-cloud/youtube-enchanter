@@ -88,9 +88,10 @@ const buildModeDropdown = async (castHeader: HTMLElement) => {
 	
 	const dropdownOptions = [{id: "simple-translate", text: "Simple Translate (ST)", triggerText: "ST", isInitiallySelected: true},
 	                         {id: "click-to-show", text: "Click to Show (CTS)", triggerText: "CTS", isInitiallySelected: false},
-	                         {id: "multiple-choice", text: "Multiple Choice (MC)", triggerText: "MC", isInitiallySelected: false},
-	                         {id: "fill-in-the-blank", text: "Fill In the Blank (FIB)", triggerText: "FIB", isInitiallySelected: false},
-	                         {id: "comprehension-quiz", text: "Comprehension Quiz (CQ)", triggerText: "CQ", isInitiallySelected: false}];
+	                         {id: "multiple-choice", text: "Listening - Multiple Choice (LMC)", triggerText: "MC", isInitiallySelected: false},
+	                         {id: "fill-in-the-blank", text: "Listening - Fill In the Blank (LFB)", triggerText: "FIB", isInitiallySelected: false},
+	                         {id: "multiple-choice", text: "Writing - Multiple Choice (WMC)", triggerText: "MC", isInitiallySelected: false},
+	                         {id: "fill-in-the-blank", text: "Writing - Fill In the Blank (WFB)", triggerText: "FIB", isInitiallySelected: false}];
 				 
 	const settings = {}
 	return buildDropdownWithTextTrigger("Mode", dropdownOptions, dropdownContainer, settings);

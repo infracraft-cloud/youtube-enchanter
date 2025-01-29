@@ -1,5 +1,6 @@
-import eventManager from "@/src/utils/EventManager";
+import { trustedPolicy} from "@/src/pages/embedded";
 import { debug, browserColorLog } from "@/src/utils/utilities";
+import eventManager from "@/src/utils/EventManager";
 
 import { createElement, fetchTranscribeApi, registerGlobalClickListener, waitSetInnerHTML, getVideoContainer, removeGlobalClickListener } from "./utils";
 
@@ -35,6 +36,7 @@ interface SegmentData {
 
 export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
 	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")], "loading");
+	addTranslation([{fromLang: "en", toLang: "spanish", fullTranslation: {indexes: [{start: 0, end: "Loading...".length}], translation: "blahblahblah", subnotes: [{indexes: [{start: 1, end: 2}, {start: 4, end: 5}], translation: "1111", subnotes: []}, {indexes: [{start: 2, end: 3}], translation: "222", subnotes: []}]}}]);
 
 /*
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
@@ -85,7 +87,7 @@ const createFakeSegmentData = (caption: string) : SegmentData => {
 	       startTime_s: -1,
 	       endTime_s: -1,
 	       element: createEmptySegment(),
-	       translations: [{fromLang: "en", toLang: "spanish", fullTranslation: {indexes: [{start: 0, end: caption.length}], translation: "blahblahblah", subnotes: [{indexes: [{start: 1, end: 2}, {start: 4, end: 5}], translation: "1111", subnotes: []}, {indexes: [{start: 2, end: 3}], translation: "222", subnotes: []}]}}]
+	       translations: []
        };
 }
 
@@ -110,18 +112,7 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
 
        // For some reason, we need to set the caption data after the HTML has been created/modified,
        // because some dynamic script from Youtube immediately emptied it out.
-       for (const segmentData of segmentDatas) {
-	   const segment = segmentData.element;
-	   const segmentCaptions = segment.querySelectorAll("yt-formatted-string");
-	   for (const segmentCaption of segmentCaptions) {
-	       if (segmentCaption.hasAttribute("is-empty")) {
-		   segmentCaption.removeAttribute("is-empty");
-		   // segmentCaption.textContent = segment.getAttribute("caption");
-		   await waitSetInnerHTML(segmentCaption, buildCaptionInnerHTML(segmentData));
-	       }
-	   }
-       }
-
+       refreshSegmentContents()
 
        // The following code below can fail and throw an exception AFTER the segments initialization,
        // since they are non-essential features
@@ -131,7 +122,41 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
        
        updateActiveSegment(segmentListRenderer, videoContainer.getCurrentTime());
        attachSegmentListeners(segmentListRenderer, videoContainer);
-       attachTranslateListeners(segmentsContainer);
+}
+
+const addTranslation = (segmentTranslations: Translation[]) => {
+      if (segmentTranslations.length !== segmentDatas.length) throw new Error(`addTranslation() error: translation.length=${translation.length} which is not equal to segmentDatas.length=${segmentDatas.length}! Unable to add translation ${translation.fromLang}->${translation.toLang}`);
+
+      for (const [idx, segmentData] of segmentDatas.entries()) {
+	  segmentData.translations.push(segmentTranslations[idx]);
+      }
+
+      refreshSegmentContents();
+      attachTranslateListeners();
+}
+
+const removeAllTranslations = () => {
+      for (const segmentData of segmentDatas) {
+          segmentData.translations = [];
+      }
+      
+      refreshSegmentContents();
+      removeTranslateListeners();
+}
+
+
+const refreshSegmentContents = () => {
+      for (const segmentData of segmentDatas) {
+	  const segment = segmentData.element;
+	  const segmentCaptions = segment.querySelectorAll("yt-formatted-string");
+	  for (const segmentCaption of segmentCaptions) {
+	      if (segmentCaption.hasAttribute("is-empty")) {
+		  segmentCaption.removeAttribute("is-empty");
+	      }
+
+	      segmentCaption.innerHTML = trustedPolicy.createHTML(buildCaptionInnerHTML(segmentData));
+	  }
+      }
 }
 
 const clearSegments = () => {

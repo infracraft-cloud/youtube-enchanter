@@ -187,7 +187,7 @@ export const lazyLoadGlobalClickListener = () => {
 	}
 }
 
-export const createErrorToast = (errorMsg: Error) => {
+export const createErrorToast = (error: Error) => {
         alert(`Error toast message: ${error}`);
 }
 

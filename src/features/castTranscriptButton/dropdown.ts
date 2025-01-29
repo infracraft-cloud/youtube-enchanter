@@ -24,12 +24,18 @@ export const buildDropdownWithTextTrigger = async (triggerText: string, dropdown
 	const triggerContainer = dropdownContainer.querySelector("#trigger");
 	const dropdownOptionsContainer = dropdownContainer.querySelector("#dropdown #menu");
 
-	await Promise.allSettled([buildDropdownTextTrigger(triggerText, triggerContainer), buildDropdownOptions(dropdownOptions, dropdownOptionsContainer, settings)])
+	await Promise.allSettled([buildDropdownTextTrigger(triggerContainer), buildDropdownOptions(dropdownOptions, dropdownOptionsContainer, settings)])
 
+	let triggerTextIsEmpty = true;
 	if (settings && settings.setInitialTriggerTextAsInitialSelectedOption) {
-	           const firstActiveOption = dropdownOptions.find(option => option.isInitiallySelected);
-		   if (firstActiveOption) setTriggerText(firstActiveOption.text, triggerContainer);
+	        const firstActiveOption = dropdownOptions.find(option => option.isInitiallySelected);
+	        if (firstActiveOption) {
+		        setTriggerText(firstActiveOption.text, firstActiveOption.id, triggerContainer);
+			triggerTextIsEmpty = false;
+		}
 	}
+
+        if (triggerTextIsEmpty) setTriggerText(triggerText, "", triggerContainer);
 	
 	attachPermanentDropdownListeners(dropdownContainer, settings);
 }
@@ -52,13 +58,14 @@ export const disableDropdownListeners = (dropdownContainer: HTMLElement) => {
 	removeGlobalClickListener([trigger, optionsDropdown]);
 }
 
-const buildDropdownTextTrigger = async (text: string, triggerContainer: HTMLElement) => {
+const buildDropdownTextTrigger = async (triggerContainer: HTMLElement) => {
        let triggerHTML = `
 						    <tp-yt-paper-button id="label" class="dropdown-trigger style-scope yt-dropdown-menu" slot="dropdown-trigger" style-target="host" role="button" tabindex="0" animated="" elevation="0" aria-disabled="false" aria-expanded="false">
 						        <!--css-build:shady-->
 							<!--css-build:shady-->
 							<dom-if class="style-scope yt-dropdown-menu"><template is="dom-if"></template></dom-if>
-							<div id="label-text" style-target="label-text" class="style-scope yt-dropdown-menu">${text}</div>
+							<div id="label-text" style-target="label-text" class="style-scope yt-dropdown-menu">
+							</div>
 							<yt-icon id="label-icon" icon="expand" class="style-scope yt-dropdown-menu">
 							    <!--css-build:shady-->
 							    <!--css-build:shady-->
@@ -89,8 +96,8 @@ const buildDropdownOptions = async (options: DropdownOption[], dropdownOptionsCo
 
        for (const option of options) {
        	     optionsHTML += `
-								<a class="yt-simple-endpoint style-scope yt-dropdown-menu${option.isInitiallySelected && !(settings.disableHighlightingSelectedOption) ? " iron-selected" : ""}" aria-selected="true" tabindex="0" id="${option.id}">
- 								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false"${option.triggerText ? ` trigger-text="` + option.triggerText + `"` : ""}>
+								<a class="yt-simple-endpoint style-scope yt-dropdown-menu${option.isInitiallySelected && !(settings.disableHighlightingSelectedOption) ? " iron-selected" : ""}" aria-selected="true" tabindex="0">
+ 								    <tp-yt-paper-item class="style-scope yt-dropdown-menu" style-target="host" role="option" tabindex="0" aria-disabled="false" option-id="${option.id}" ${option.triggerText ? ` trigger-text="` + option.triggerText + `"` : ""}>
 								        <!--css-build:shady-->
 									<!--css-build:shady-->
 									<tp-yt-paper-item-body class="style-scope yt-dropdown-menu">
@@ -118,8 +125,10 @@ const buildDropdownOptions = async (options: DropdownOption[], dropdownOptionsCo
 }
 
 const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settings: DropdownSettings) => {
-	const trigger = dropdownContainer.querySelector("tp-yt-paper-button#label");
+	const trigger = dropdownContainer.querySelector("#trigger");
 	if (!trigger) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer trigger");
+	const triggerPresser = trigger.querySelector("tp-yt-paper-button#label");
+	if (!triggerPresser) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer triggerPresser");
 	const optionsDropdown = dropdownContainer.querySelector("tp-yt-iron-dropdown#dropdown");
 	if (!optionsDropdown) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer optionsDropdown");
 	const options = dropdownContainer.querySelectorAll("#dropdown tp-yt-paper-item[role=option]");
@@ -132,7 +141,7 @@ const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settin
 			 if (curr.isSameNode(mutation.target)) {
 			       if (!settings.disableHighlightingSelectedOption) curr.parentNode.classList.add("iron-selected");
 
-			       if (!settings.keepTriggerTextConstant) setTriggerText(curr, trigger);
+			       if (!settings.keepTriggerTextConstant) setTriggerTextFromOption(curr, trigger);
 			 } else {
 			       curr.parentNode.classList.remove("iron-selected");
 			 }
@@ -142,18 +151,29 @@ const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settin
 	    });
 	}
 
-	listenAttributePressed(trigger, (mutation) => {setDropdownVisibility(true, optionsDropdown);});
+	listenAttributePressed(triggerPresser, (mutation) => {setDropdownVisibility(true, optionsDropdown);});
 }
 
-const setTriggerText = (option: HTMLElement, trigger: HTMLElement) => {
+const setTriggerTextFromOption = (option: HTMLElement, trigger: HTMLElement) => {
+	let newTriggerText = null;
+	if (option.hasAttribute("trigger-text")) {
+	     newTriggerText = option.getAttribute("trigger-text");
+	} else {
+	     newTriggerText = option.textContent.trim();
+	}
+
+	const newOptionId = option.getAttribute("option-id");
+
+	setTriggerText(newTriggerText, newOptionId, trigger);
+}
+
+const setTriggerText = (newTriggerText: string, newOptionId: string, trigger: HTMLElement) => {
 	const triggerText = trigger.querySelector("#label-text");
 	if (!triggerText) throw new Error("setTriggerText() error: cannot find trigger triggerText");
 
-	if (option.hasAttribute("trigger-text")) {
-	     triggerText.textContent = option.getAttribute("trigger-text");
-	} else {
-	     triggerText.textContent = option.textContent.trim();
-	}
+	triggerText.textContent = newTriggerText;
+	trigger.setAttribute("value", newTriggerText);
+	trigger.setAttribute("option-id", newOptionId);
 }
 
 

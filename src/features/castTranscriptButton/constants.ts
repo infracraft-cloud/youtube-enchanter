@@ -27,8 +27,8 @@ export const CAST_TRANSCRIPT_HEADER_HTML = `
 			 </yt-formatted-string>
 			 <div id="subtitle-complex" class="style-scope ytd-engagement-panel-title-header-renderer"></div>
 		     </div>
-		     <div id="language-dropdown" class="style-scope ytd-engagement-panel-title-header-renderer" style="margin-left: 8px; margin-right: 8px;"></div>
-		     <div id="mode-dropdown" class="style-scope ytd-engagement-panel-title-header-renderer" style="margin-left: 8px; margin-right: 8px;"></div>
+		     <div id="language-dropdown" class="style-scope ytd-engagement-panel-title-header-renderer" style="margin-left: 8px; margin-right: 8px; display: none;"></div>
+		     <div id="mode-dropdown" class="style-scope ytd-engagement-panel-title-header-renderer" style="margin-left: 8px; margin-right: 8px; display: none;"></div>
 		     <div id="menu" class="style-scope ytd-engagement-panel-title-header-renderer">
 			 <ytd-menu-renderer class="style-scope ytd-engagement-panel-title-header-renderer" safe-area="" menu-active="" style="display: none;">
 			     <!--css-build:shady-->
@@ -120,7 +120,7 @@ export const CAST_TRANSCRIPT_BODY_HTML = `
 			     <ytd-transcript-segment-list-renderer class="style-scope ytd-transcript-search-panel-renderer">
 			         <!--css-build:shady-->
 				 <!--css-build:shady-->
-				 <div id="segments-container" class="style-scope ytd-transcript-segment-list-renderer"></div>
+				 <div id="segments-container" class="style-scope ytd-transcript-segment-list-renderer" status="uninitialized"></div>
 		                 <div id="message-container" class="style-scope ytd-transcript-segment-list-renderer" hidden="">
 		                     <yt-formatted-string id="no-results" class="style-scope ytd-transcript-segment-list-renderer">No results found</yt-formatted-string>
 		                 </div>

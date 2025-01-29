@@ -3,7 +3,7 @@ import { debug, browserColorLog, createStyledElement } from "@/src/utils/utiliti
 import { CAST_TRANSCRIPT_PANEL_HTML, CAST_TRANSCRIPT_HEADER_HTML, CAST_TRANSCRIPT_BODY_HTML, DROPDOWN_MENU_HTML } from "./constants";
 import { buildDropdownWithTextTrigger, enableDropdownListeners, disableDropdownListeners } from "./dropdown"
 import { loadTranscriptSegments} from "./transcriptSegments";
-import { createElement, d_ws, listenAttributePressed, registerGlobalClickListener, waitSetInnerHTML } from "./utils";
+import { createElement, d_ws, listenAttributeMutation, listenAttributePressed, registerGlobalClickListener, waitSetInnerHTML } from "./utils";
 
 
 
@@ -120,6 +120,35 @@ const attachHeaderListeners = (castTranscriptPanel: HTMLElement) => {
 const attachContentListeners = (castTranscriptPanel: HTMLElement) => {
         const castContent = castTranscriptPanel.querySelector("#content");
 	if (!castContent) throw new Error("attachContentListeners() error: cannot find castContent");
+	
+        const segmentsContent = castContent.querySelector("#segments-container");
+	if (!segmentsContent) throw new Error("attachContentListeners() error: cannot find segmentsContent");
+
+	const languageDropdown = castTranscriptPanel.querySelector("#header #language-dropdown");
+	if (!languageDropdown) throw new Error("attachContentListeners() error: cannot find languageDropdown");
+	const languageDropdownTrigger = languageDropdown.querySelector("#trigger");
+	if (!languageDropdownTrigger) throw new Error("attachContentListeners() error: cannot find languageDropdownTrigger");
+	
+	const modeDropdown = castTranscriptPanel.querySelector("#header #mode-dropdown");
+	if (!modeDropdown) throw new Error("attachContentListeners() error: cannot find modeDropdown");
+	const modeDropdownTrigger = modeDropdown.querySelector("#trigger");
+	if (!modeDropdownTrigger) throw new Error("attachContentListeners() error: cannot find modeDropdownTrigger");
+	
+	listenAttributeMutation(segmentsContent, "status", (mutation, observer) => {
+	    if (mutation.target.getAttribute("status") === "done") {
+	        languageDropdown.style.display = "";
+	        modeDropdown.style.display = "";	    
+	    }
+	});
+
+	for (const languageModeDropdownTrigger of [languageDropdownTrigger, modeDropdownTrigger]) {
+	    listenAttributeMutation(languageModeDropdownTrigger, "option-id", (mutation, observer) => {
+		const languageId = languageDropdownTrigger.getAttribute("option-id");
+		const modeId = modeDropdownTrigger.getAttribute("option-id");
+		if (mutation.target.hasAttribute("option-id") && mutation.target.getAttribute("option-id") !== "") {
+		}
+	    });
+	}
 }
 
 const getPanelsContainer = () : HTMLEelement => {

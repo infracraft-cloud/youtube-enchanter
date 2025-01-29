@@ -5,20 +5,34 @@ import { createElement, fetchTranscribeApi, registerGlobalClickListener, waitSet
 
 // NOTE: remove event listeners when panel is closed?
 
-type Language = string;
-type LangString = Map<Language, string>;
+interface TNote {
+	startIdx: number;
+	endIdx: number;
+	translation: str;
+	
+	subnotes: TNote[];
+}
+
+interface Translation {
+	fromLang: str;
+	toLang: str;
+
+	fullTranslation: TNote;
+}
+
 interface SegmentData {
-        fullCaption: LangString;
-        captionPieces: LangString[];
+        caption: str;
 	startTime_s: number;
 	endTime_s: number;
 	element: HTMLElement;
+
+	translations: Translation[];
 }
 
 export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
-	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")]);
+	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")], "loading");
 
-	/*
+/*
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
 	// we don't want to synchronously wait for the result.
@@ -35,13 +49,13 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
          	      throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
 	       }
 	}).then(async (responseJson) => {
-	       const newSegmentDatas = responseJson.transcription.chunks.map(segmentJson => ({fullCaption: new Map([["original", segmentJson.text]]),
-									     captionPieces: [new Map([["original", segmentJson.text]])],
-									     startTime_s: segmentJson.timestamp[0],
-									     endTime_s: segmentJson.timestamp[1],
-									     element: createEmptySegment()}));
+	       const newSegmentDatas = responseJson.transcription.chunks.map(segmentJson => ({caption: segmentJson.text,
+											      startTime_s: segmentJson.timestamp[0],
+											      endTime_s: segmentJson.timestamp[1],
+											      element: createEmptySegment(),
+											      translations: [] }));
 
-	       await setSegments(castTranscriptPanel, newSegmentDatas);
+	       await setSegments(castTranscriptPanel, newSegmentDatas, "done");
 	}).catch(async (error) => {
 	       let publicErrorMsg = error.message;
 	       let debugErrorMsg = error.message;
@@ -57,25 +71,23 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
 	       }
 	       
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
-	       await setSegments(castTranscriptPanel, [createFakeSegmentData(`Network request error: ${publicErrorMsg}`)]);
+	       await setSegments(castTranscriptPanel, [createFakeSegmentData(`Network request error: ${publicErrorMsg}`)], "error");
 	});
-	*/
+*/
 }
 
 const createFakeSegmentData = (caption: string) : SegmentData => {
-       return {fullCaption: new Map([["original", caption]]),
-               captionPieces: [new Map([["original", caption]])],
+       return {caption: caption,
 	       startTime_s: -1,
 	       endTime_s: -1,
-	       element: createEmptySegment()
+	       element: createEmptySegment(),
+	       translations: [{fromLang: "en", toLang: "spanish", fullTranslation: {startIdx: 0, endIdx: caption.length, translation: "blahblahblah", subnotes: [{startIdx: 1, endIdx: 2, translation: "1111", subnotes: []}, {startIdx: 2, endIdx: 3, translation: "222", subnotes: []}]}}]
        };
 }
 
 var segmentDatas : SegmentData[] = []
-const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: SegmentData[]) => {
+const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: SegmentData[], segmentStatus: string) => {
        clearSegments();
-       
-       segmentDatas = newSegmentDatas;
 
        const segmentListRenderer = castTranscriptPanel.querySelector("ytd-transcript-segment-list-renderer");
        if (!segmentListRenderer) throw new Error("setSegments() error: could not find segmentListRenderer");
@@ -83,10 +95,13 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
        const segmentsContainer = segmentListRenderer.querySelector("#segments-container");
        if (!segmentsContainer) throw new Error("setSegments() error: could not find segmentsContainer");
 
+       segmentDatas = newSegmentDatas;
+
+       segmentsContainer.setAttribute("status", segmentStatus);
        segmentsContainer.replaceChildren(...segmentDatas.map(segmentData => segmentData.element));
        
        await Promise.allSettled(segmentDatas.map(async (segmentData) => {
-	   waitSetInnerHTML(segmentData.element,  buildEmptySegmentInnerHTML(segmentData.fullCaption["original"], segmentData.startTime_s, segmentData.endTime_s));
+	   waitSetInnerHTML(segmentData.element,  buildEmptySegmentInnerHTML(segmentData.caption, segmentData.startTime_s, segmentData.endTime_s));
        }));
 
        // For some reason, we need to set the caption data after the HTML has been created/modified,
@@ -98,12 +113,15 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
 	       if (segmentCaption.hasAttribute("is-empty")) {
 		   segmentCaption.removeAttribute("is-empty");
 		   // segmentCaption.textContent = segment.getAttribute("caption");
-		   await waitSetInnerHTML(segmentCaption, buildCaptionInnerHTML(segmentData.captionPieces));
+		   await waitSetInnerHTML(segmentCaption, buildCaptionInnerHTML(segmentData));
 	       }
 	   }
        }
 
 
+       // The following code below can fail and throw an exception AFTER the segments initialization,
+       // since they are non-essential features
+       
        const videoContainer = getVideoContainer();
        if (!videoContainer) throw new Error("setSegments() error: cannot find videoContainer");
        
@@ -206,6 +224,112 @@ const buildEmptySegmentInnerHTML = (originalCaption: string, startTime_s: number
 }
 
 
+const buildCaptionInnerHTML = (segmentData: SegmentData) => {
+        if (!segmentData.translations || segmentData.translations.length == 0) return segmentData.caption;  // No translation data, so just return a simple text node
+
+	// If the code reaches here, there is translation data, so we must format it correctly;
+	const uniqueIdxs = new Set();
+	uniqueIdxs.add(0);
+	uniqueIdxs.add(segmentData.caption.length);
+	for (const translation of segmentData.translations) {
+	    recurseTnotes(translation.fullTranslation, 0, (curr, level) => {uniqueIdxs.add(curr.startIdx); uniqueIdxs.add(curr.endIdx);}, null);
+	}
+
+	const captionSliceIdxs = Array.from(uniqueIdxs);
+	captionSliceIdxs.sort((a, b) => a - b);
+
+	console.log(`"TEST1 ${captionSliceIdxs}`);
+
+	const captionPieces = []
+	let prevCaptionSliceIdx = null;
+	for (const captionSliceIdx of captionSliceIdxs) {
+	    if (prevCaptionSliceIdx !== null) captionPieces.push(segmentData.caption.substring(prevCaptionSliceIdx, captionSliceIdx));
+
+	    prevCaptionSliceIdx = captionSliceIdx;	    
+	}
+	// Don't have to worry about the edge case of the first/last segment of the caption, since
+	// 0 and caption.length is always included in uniqueIdxs and captionSliceIdxs
+	
+	console.log(`"TEST2 ${captionPieces}`);
+	
+        let html = `<table>
+	                <tbody>`;
+
+	html += `        <tr language="original" depth="0">`;
+	for (const captionPiece of captionPieces) {
+	    html += `            <td style="text-align: center; vertical-align: middle;">
+	                             ${captionPiece}
+				 </td>`;
+	}
+	html += `        </tr>`;
+
+
+	for (const translation of segmentData.translations) {
+	    if (!translation.fullTranslation) throw new Error(`buildCaptionInnerHTML() error: malformed translation data with missing .fullTranslation field: {translation}`);
+	    
+	    const depth_2_noteTdIdxs = []
+	    recurseTnotes(translation.fullTranslation, 0, (curr, depth) => {	
+	        if (!(depth in depth_2_noteTdIdxs)) depth_2_noteTdIdxs[depth] = [];
+	        const noteTdIdxs = depth_2_noteTdIdxs[depth];
+		
+	    	// tnote.startIdx and captionSliceIdxs are string indexes
+		// We must convert these to <td> indexes
+		const tdStartIdx = captionSliceIdxs.findLastIndex(idx => idx <= curr.startIdx );
+		const tdEndIdx = captionSliceIdxs.findIndex(idx => idx >= curr.endIdx );
+		
+		noteTdIdxs.push({tnote: curr, tdStartIdx: tdStartIdx, tdEndIdx: tdEndIdx});
+	    }, null);
+	    for (const [depth, noteTdIdxs] of depth_2_noteTdIdxs.entries()) {
+	        noteTdIdxs.sort((a, b) => a.tdstartIdx - b.tdStartIdx);
+	    }
+	    const maxDepth = Math.max(...Object.keys(depth_2_noteTdIdxs));
+
+	    console.log(`TEST3: ${depth_2_noteTdIdxs} / ${maxDepth}`);
+	    for (let depth = 0; depth <= maxDepth; depth++) {
+		html += `        <tr language="${translation.toLang}" depth="${depth}">`;
+	        if (depth in depth_2_noteTdIdxs) {
+		    const noteTdIdxs = depth_2_noteTdIdxs[depth]
+		    
+		    let tdHtml = ""
+		    let firstSeenTdStartIdx = null;
+		    let lastSeenTdEndIdx = null;
+		    for (const noteTdIdx of noteTdIdxs) {
+			if (firstSeenTdStartIdx == null) firstSeenTdStartIdx = noteTdIdx.tdStartIdx;
+			lastSeenTdEndIdx = noteTdIdx.tdEndIdx;
+
+			tdHtml += `<td colspan="${noteTdIdx.tdEndIdx - noteTdIdx.tdStartIdx}" style="text-align: center; vertical-align: middle;">${noteTdIdx.tnote.translation}</td>`;
+		    }
+
+		    if (firstSeenTdStartIdx && firstSeenTdStartIdx !== 0) {
+			tdHtml = `<td colspan="${firstSeenTdStartIdx}"></td>` + tdHtml;
+		    }
+
+		    if (lastSeenTdEndIdx && lastSeenTdEndIdx < captionPieces.length) {
+			tdHtml += `<td colspan="${captionPieces.length - lastSeenTdEndIdx}"></td>`;
+		    }
+
+		    html += tdHtml;
+		}
+		html += `        </tr>`;
+	    }
+	}
+
+
+	html += `    </tbody>
+	         </table>`;
+		 
+	return html;
+}
+
+const recurseTnotes = (tnote: TNote, depth: number = 0, preCallback: (curr: TNote, depth: number) => void, postCallback: (curr: TNote, depth: number) => void) => {
+       if (preCallback) preCallback(tnote, depth);
+
+       tnote.subnotes.forEach(subnote => recurseTnotes(subnote, depth+1, preCallback, postCallback));
+
+       if (postCallback) postCallback(tnote, depth);
+}
+
+/*
 const buildCaptionInnerHTML = (captionPieces: LangString[]) => {
         let html = "";
 	for (const captionPiece of captionPieces) {
@@ -221,6 +345,8 @@ const buildCaptionInnerHTML = (captionPieces: LangString[]) => {
 	}
 	return html;
 }
+*/
+
 
 var prevActiveSegment = null
 const updateActiveSegment = (segmentListRenderer: HTMLElement, currentTime_s: number) => {

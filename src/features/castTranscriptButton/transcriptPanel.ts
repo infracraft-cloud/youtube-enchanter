@@ -87,7 +87,7 @@ const buildModeDropdown = async (castHeader: HTMLElement) => {
 	if (!dropdownContainer) throw new Error("buildModeDropdown() error: cannot find dropdownContainer");
 	
 	const dropdownOptions = [{id: "simple-translate", text: "Simple Translate (ST)", triggerText: "ST", isInitiallySelected: true},
-	                         {id: "delayed-translate", text: "Delayed Translate (DT)", triggerText: "DT", isInitiallySelected: false},
+	                         {id: "click-to-show", text: "Click to Show (CTS)", triggerText: "CTS", isInitiallySelected: false},
 	                         {id: "multiple-choice", text: "Multiple Choice (MC)", triggerText: "MC", isInitiallySelected: false},
 	                         {id: "fill-in-the-blank", text: "Fill In the Blank (FIB)", triggerText: "FIB", isInitiallySelected: false},
 	                         {id: "comprehension-quiz", text: "Comprehension Quiz (CQ)", triggerText: "CQ", isInitiallySelected: false}];
@@ -145,7 +145,9 @@ const attachContentListeners = (castTranscriptPanel: HTMLElement) => {
 	    listenAttributeMutation(languageModeDropdownTrigger, "option-id", (mutation, observer) => {
 		const languageId = languageDropdownTrigger.getAttribute("option-id");
 		const modeId = modeDropdownTrigger.getAttribute("option-id");
-		if (mutation.target.hasAttribute("option-id") && mutation.target.getAttribute("option-id") !== "") {
+
+		if (languageId && modeId) {
+		
 		}
 	    });
 	}

@@ -5,20 +5,24 @@ import { createElement, fetchTranscribeApi, registerGlobalClickListener, waitSet
 
 // NOTE: remove event listeners when panel is closed?
 
+interface Index {
+	start: number;
+	end: number
+};
+
 interface TNote {
-	startIdx: number;
-	endIdx: number;
+	indexes: Index[];
 	translation: str;
 	
 	subnotes: TNote[];
-}
+};
 
 interface Translation {
 	fromLang: str;
 	toLang: str;
 
 	fullTranslation: TNote;
-}
+};
 
 interface SegmentData {
         caption: str;
@@ -27,7 +31,7 @@ interface SegmentData {
 	element: HTMLElement;
 
 	translations: Translation[];
-}
+};
 
 export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) => {	
 	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")], "loading");
@@ -81,7 +85,7 @@ const createFakeSegmentData = (caption: string) : SegmentData => {
 	       startTime_s: -1,
 	       endTime_s: -1,
 	       element: createEmptySegment(),
-	       translations: [{fromLang: "en", toLang: "spanish", fullTranslation: {startIdx: 0, endIdx: caption.length, translation: "blahblahblah", subnotes: [{startIdx: 1, endIdx: 2, translation: "1111", subnotes: []}, {startIdx: 2, endIdx: 3, translation: "222", subnotes: []}]}}]
+	       translations: [{fromLang: "en", toLang: "spanish", fullTranslation: {indexes: [{start: 0, end: caption.length}], translation: "blahblahblah", subnotes: [{indexes: [{start: 1, end: 2}, {start: 3, end: 4}], translation: "1111", subnotes: []}, {indexes: [{start: 2, end: 3}], translation: "222", subnotes: []}]}}]
        };
 }
 
@@ -232,7 +236,11 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 	uniqueIdxs.add(0);
 	uniqueIdxs.add(segmentData.caption.length);
 	for (const translation of segmentData.translations) {
-	    recurseTnotes(translation.fullTranslation, 0, (curr, level) => {uniqueIdxs.add(curr.startIdx); uniqueIdxs.add(curr.endIdx);}, null);
+	    recurseTnotes(translation.fullTranslation, 0, (curr, level) => {
+	    	for (const index of curr.indexes) {
+		    uniqueIdxs.add(index.start); uniqueIdxs.add(index.end);
+		}
+            }, null);
 	}
 
 	const captionSliceIdxs = Array.from(uniqueIdxs);
@@ -248,11 +256,11 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 	    prevCaptionSliceIdx = captionSliceIdx;	    
 	}
 	// Don't have to worry about the edge case of the first/last segment of the caption, since
-	// 0 and caption.length is always included in uniqueIdxs and captionSliceIdxs
+	// 0 and caption.length is guaranteed to be included in uniqueIdxs and captionSliceIdxs
 	
 	console.log(`"TEST2 ${captionPieces}`);
 	
-        let html = `<table>
+        let html = `<table style="border-spacing: 0;">
 	                <tbody>`;
 
 	html += `        <tr language="original" depth="0">`;
@@ -274,13 +282,15 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
 		
 	    	// tnote.startIdx and captionSliceIdxs are string indexes
 		// We must convert these to <td> indexes
-		const tdStartIdx = captionSliceIdxs.findLastIndex(idx => idx <= curr.startIdx );
-		const tdEndIdx = captionSliceIdxs.findIndex(idx => idx >= curr.endIdx );
-		
-		noteTdIdxs.push({tnote: curr, tdStartIdx: tdStartIdx, tdEndIdx: tdEndIdx});
+		for (const index of curr.indexes) {
+		    const tdStartIdx = captionSliceIdxs.findLastIndex(idx => idx <= index.start );
+		    const tdEndIdx = captionSliceIdxs.findIndex(idx => idx >= index.end );
+
+		    noteTdIdxs.push({tnote: curr, tdStartIdx: tdStartIdx, tdEndIdx: tdEndIdx});
+		}
 	    }, null);
 	    for (const [depth, noteTdIdxs] of depth_2_noteTdIdxs.entries()) {
-	        noteTdIdxs.sort((a, b) => a.tdstartIdx - b.tdStartIdx);
+	        noteTdIdxs.sort((a, b) => a.tdStartIdx - b.tdStartIdx);
 	    }
 	    const maxDepth = Math.max(...Object.keys(depth_2_noteTdIdxs));
 

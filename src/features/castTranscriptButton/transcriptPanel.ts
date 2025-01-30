@@ -2,7 +2,8 @@ import { debug, browserColorLog, createStyledElement } from "@/src/utils/utiliti
 
 import { CAST_TRANSCRIPT_PANEL_HTML, CAST_TRANSCRIPT_HEADER_HTML, CAST_TRANSCRIPT_BODY_HTML, DROPDOWN_MENU_HTML } from "./constants";
 import { buildDropdownWithTextTrigger, enableDropdownListeners, disableDropdownListeners } from "./dropdown"
-import { displayAllFullTranslations, hideAllTnotes, loadTranscriptSegments, loadTranslation } from "./transcriptSegments";
+import { loadTranscriptSegments } from "./transcriptSegments";
+import { displayTnotesByFilter, loadTranslation } from "./transcriptTranslation"
 import { createElement, d_ws, listenAttributeMutation, listenAttributePressed, registerGlobalClickListener, waitSetInnerHTML } from "./utils";
 
 
@@ -40,8 +41,8 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	const castHeader = castTranscriptPanel.querySelector("#header");
 	await waitSetInnerHTML(castHeader,  CAST_TRANSCRIPT_HEADER_HTML);
 	if (d_ws) debug("[buildCastTranscriptPanel] building header initialized -- attaching listeners");
-	await buildLanguageDropdown(castHeader);
-	await buildModeDropdown(castHeader);
+	await buildLanguageDropdown(castTranscriptPanel);
+	await buildModeDropdown(castTranscriptPanel);
 	
 	// For some reason due to dynamic scripts, we must set the text content of the title after we have created all the elements,
 	// otherwise the scripts would modify the title to become empty.
@@ -68,8 +69,8 @@ const buildCastTranscriptPanel = async (panels: HTMLElement) => {
 	return castTranscriptPanel;
 }
 
-const buildLanguageDropdown = async (castHeader: HTMLElement) => {
-	const dropdownContainer = castHeader.querySelector("#language-dropdown");
+const buildLanguageDropdown = async (castTranscriptPanel: HTMLElement) => {
+	const dropdownContainer = castTranscriptPanel.querySelector("#header #language-dropdown");
 	if (!dropdownContainer) throw new Error("buildLanguageDropdown() error: cannot find dropdownContainer");
 	
 	const dropdownOptions = [{id: "english", text: "English", isInitiallySelected: false},
@@ -80,14 +81,14 @@ const buildLanguageDropdown = async (castHeader: HTMLElement) => {
 				 
 	const settings = {};
 	return buildDropdownWithTextTrigger("Translate", dropdownOptions, dropdownContainer, settings, async (optionId, text) => {
-	       await loadTranslation(optionId);
+	       await loadTranslation(castTranscriptPanel, optionId);
 	       updatePanelMode();
 	});
 }
 
 var panelMode = "show-translations";
-const buildModeDropdown = async (castHeader: HTMLElement) => {
-	const dropdownContainer = castHeader.querySelector("#mode-dropdown");
+const buildModeDropdown = async (castTranscriptPanel: HTMLElement) => {
+	const dropdownContainer = castTranscriptPanel.querySelector("#header #mode-dropdown");
 	if (!dropdownContainer) throw new Error("buildModeDropdown() error: cannot find dropdownContainer");
 	
 	const dropdownOptions = [{id: "show-translations", text: "Show Translations (ST)", triggerText: "Mode: ST", isInitiallySelected: true},
@@ -107,10 +108,10 @@ const buildModeDropdown = async (castHeader: HTMLElement) => {
 const updatePanelMode = () => {
         switch (panelMode) {
 	      case "show-translations":
-	           displayAllFullTranslations();
+	           displayTnotesByFilter(null, [["0"]]);
 	      	   break;
 	      case "click-to-show":
-	           hideAllTnotes();
+	           displayTnotesByFilter([], []);
 	      	   break;
 	      case "listening-multiple-choice":
 	      	   break;

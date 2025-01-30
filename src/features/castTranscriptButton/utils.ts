@@ -42,6 +42,7 @@ export const TRANSLATE_API_URL = `${BACKEND_HOSTNAME}/api/v1/stt/youtube/transla
 
 export const d_ws = DEBUG_WAIT_SET_INNER_HTML = true;
 
+
 export const fetchTranscribeApi = async (youtubeVideoUrl?: string) => {
         if (!youtubeVideoUrl) youtubeVideoUrl = window.location.href;
         return fetch(`${TRANSCRIBE_API_URL}?api-key=aaa&url=${encodeURIComponent(youtubeVideoUrl, "utf-8")}`, {

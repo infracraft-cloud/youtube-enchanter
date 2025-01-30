@@ -1,5 +1,5 @@
 
-import { createElement, removeGlobalClickListener, listenAttributePressed, waitSetInnerHTML, registerGlobalClickListener } from "./utils";
+import { createElement, removeGlobalClickListener, listenAttributeMutation, listenAttributePressed, waitSetInnerHTML, registerGlobalClickListener } from "./utils";
 
 import { DROPDOWN_HTML } from "./constants";
 
@@ -18,7 +18,7 @@ interface DropdownSettings {
        disableHighlightingSelectedOption: boolean;
 };
 
-export const buildDropdownWithTextTrigger = async (triggerText: string, dropdownOptions: DropdownOption[], dropdownContainer: HTMLElement, settings? : DropdownSettings = {}) => {
+export const buildDropdownWithTextTrigger = async (initialTriggerText: string, dropdownOptions: DropdownOption[], dropdownContainer: HTMLElement, settings : DropdownSettings = {}, onTriggerChange: (newOptionId: string, newText: string) => void) => {
 	await waitSetInnerHTML(dropdownContainer, DROPDOWN_HTML);
 	
 	const triggerContainer = dropdownContainer.querySelector("#trigger");
@@ -30,14 +30,14 @@ export const buildDropdownWithTextTrigger = async (triggerText: string, dropdown
 	if (settings && settings.setInitialTriggerTextAsInitialSelectedOption) {
 	        const firstActiveOption = dropdownOptions.find(option => option.isInitiallySelected);
 	        if (firstActiveOption) {
-		        setTriggerText(firstActiveOption.text, firstActiveOption.id, triggerContainer);
+		        setTriggerText(firstActiveOption.triggerText ? firstActiveOption.triggerText : firstActiveOption.text, firstActiveOption.id, triggerContainer);
 			triggerTextIsEmpty = false;
 		}
 	}
 
-        if (triggerTextIsEmpty) setTriggerText(triggerText, "", triggerContainer);
+        if (triggerTextIsEmpty) setTriggerText(initialTriggerText, "", triggerContainer);
 	
-	attachPermanentDropdownListeners(dropdownContainer, settings);
+	attachPermanentDropdownListeners(dropdownContainer, settings, onTriggerChange);
 }
 
 export const enableDropdownListeners = (dropdownContainer: HTMLElement) => {
@@ -124,7 +124,7 @@ const buildDropdownOptions = async (options: DropdownOption[], dropdownOptionsCo
        return waitSetInnerHTML(dropdownOptionsContainer, optionsHTML);
 }
 
-const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settings: DropdownSettings) => {
+const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settings: DropdownSettings, onTriggerChange: (newOptionId: string, newText: string) => void) => {
 	const trigger = dropdownContainer.querySelector("#trigger");
 	if (!trigger) throw new Error("attachPermanentDropdownListeners() error: cannot find dropdownContainer trigger");
 	const triggerPresser = trigger.querySelector("tp-yt-paper-button#label");
@@ -152,6 +152,9 @@ const attachPermanentDropdownListeners = (dropdownContainer: HTMLElement, settin
 	}
 
 	listenAttributePressed(triggerPresser, (mutation) => {setDropdownVisibility(true, optionsDropdown);});
+	listenAttributeMutation(trigger, "option-id", (mutation, observer) => {
+	    onTriggerChange(mutation.target.getAttribute("option-id"), mutation.target.getAttribute("trigger-text"));
+	})
 }
 
 const setTriggerTextFromOption = (option: HTMLElement, trigger: HTMLElement) => {
@@ -172,7 +175,7 @@ const setTriggerText = (newTriggerText: string, newOptionId: string, trigger: HT
 	if (!triggerText) throw new Error("setTriggerText() error: cannot find trigger triggerText");
 
 	triggerText.textContent = newTriggerText;
-	trigger.setAttribute("value", newTriggerText);
+	trigger.setAttribute("trigger-text", newTriggerText);
 	trigger.setAttribute("option-id", newOptionId);
 }
 

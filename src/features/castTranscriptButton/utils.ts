@@ -38,14 +38,30 @@ error handling in buildCastTranscriptPanel, waitSetInner, event listeners
 
 export const BACKEND_HOSTNAME = "http://localhost:8001";
 export const TRANSCRIBE_API_URL = `${BACKEND_HOSTNAME}/api/v1/stt/youtube/transcribe`;
+export const TRANSLATE_API_URL = `${BACKEND_HOSTNAME}/api/v1/stt/youtube/translate`;
 
 export const d_ws = DEBUG_WAIT_SET_INNER_HTML = true;
 
 export const fetchTranscribeApi = async (youtubeVideoUrl?: string) => {
         if (!youtubeVideoUrl) youtubeVideoUrl = window.location.href;
         return fetch(`${TRANSCRIBE_API_URL}?api-key=aaa&url=${encodeURIComponent(youtubeVideoUrl, "utf-8")}`, {
-	       headers: { Test: "test" },
-	       method: "get"
+	       method: "GET"
+	})
+}
+
+interface TranslateQuery {
+        query: string;
+	toLang: string;
+	fromLang?: string;
+}
+export const fetchTranslateApi = async (postData: TranslateQuery) => {
+        return fetch(`${TRANSLATE_API_URL}?api-key=aaa`, {
+	       method: "POST",
+	       headers: {
+		 'Accept': 'application/json',
+		 'Content-Type': 'application/json'
+	       },
+	       body: JSON.stringify(postData)
 	})
 }
 

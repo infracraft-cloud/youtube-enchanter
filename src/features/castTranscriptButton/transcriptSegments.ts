@@ -2,7 +2,7 @@ import { trustedPolicy} from "@/src/pages/embedded";
 import { debug, browserColorLog } from "@/src/utils/utilities";
 import eventManager from "@/src/utils/EventManager";
 
-import { createElement, fetchTranscribeApi, registerGlobalClickListener, waitSetInnerHTML, getVideoContainer, removeGlobalClickListener } from "./utils";
+import { createElement, createErrorToast, fetchTranscribeApi, fetchTranslateApi, registerGlobalClickListener, waitSetInnerHTML, getVideoContainer, removeGlobalClickListener } from "./utils";
 
 // NOTE: remove event listeners when panel is closed?
 
@@ -38,7 +38,6 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
 	await setSegments(castTranscriptPanel, [createFakeSegmentData("Loading...")], "loading");
 	addTranslation([{fromLang: "en", toLang: "spanish", fullTranslation: {indexes: [{start: 0, end: "Loading...".length}], translation: "blahblahblah", subnotes: [{indexes: [{start: 1, end: 2}, {start: 4, end: 5}], translation: "1111", subnotes: []}, {indexes: [{start: 2, end: 3}], translation: "222", subnotes: []}]}}]);
 
-/*
 	// Launch a new promise chain without 'await' to asynchronously load the transcript segments
 	// Since it requires a compute-intensive API call, it can take a very long time, so
 	// we don't want to synchronously wait for the result.
@@ -79,7 +78,45 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
 	       browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
 	       await setSegments(castTranscriptPanel, [createFakeSegmentData(`Network request error: ${publicErrorMsg}`)], "error");
 	});
-*/
+}
+
+export const displayAllFullTranslations = () => {
+       displayTnotes(null, [["0"]]);
+}
+
+export const hideAllTnotes = () => {
+       displayTnotes([], []);
+}
+
+
+// If 'languages' (or 'paths') is null or undefined, then we apply visibility to all languages (or paths).
+// If 'languages' (or 'paths') is an empty list, then we apply visibility to no languages (or paths), i.e. we make all tnotes invisible.
+const displayTnotes = (languages: str[], paths: str[][]) => {
+        if (!languages) languages = [null];
+	if (!paths) paths = [null];
+	
+	for (const segmentData of segmentDatas) {
+	       if (!segmentData.translations || segmentData.translations.length == 0) continue;
+	       
+	       const translateNotePanel = segmentData.element.querySelector("#translate-note-panel");
+	       if (!translateNotePanel) throw new Error("displayTnotes() error: cannot find translateNotePanel of current segmentData");
+
+	       const allTnotes = [];
+	       
+	       for (const language of languages) {
+		      for (const path of paths) {
+			     const tnotes = segmentData.element.querySelectorAll(`#tnote${language ? `[language="${language}"]` : ""}${path ? `[path="${path}"]` : ""}`);
+			     if (tnotes) allTnotes.push(...tnotes);
+		      }
+		}
+
+	       const languageAndPaths = []
+	       for (const tnote of allTnotes) {
+		       languageAndPaths.push({language: tnote.getAttribute("language"), path: tnote.getAttribute("path")});
+	       }
+
+	       displayTranslateNotes(languageAndPaths, translateNotePanel);
+	}
 }
 
 const createFakeSegmentData = (caption: string) : SegmentData => {
@@ -124,6 +161,59 @@ const setSegments = async (castTranscriptPanel: HTMLElement, newSegmentDatas: Se
        attachSegmentListeners(segmentListRenderer, videoContainer);
 }
 
+export const loadTranslation = async (toLang: string, fromLang?: string) => {
+      removeAllTranslations();
+
+      const segmentTranslations = []
+      for (const segmentData of segmentDatas) {
+          const postData = {
+	  	 query: segmentData.caption,
+		 to_lang: toLang
+	  }
+	  if (fromLang) postData.from_lang = fromLang;
+	  
+	  await fetchTranslateApi(postData).then(async (response) => {
+		 if (response.status == 200) {
+			return response.json();
+		 } else {
+			let json = {};
+			try {
+			      json = await response.json();
+			} catch (error) {
+			      throw new Error(`loadTranslation(): fetch() returned an error with status ${response.status}: ${response.statusText}`);
+			}
+			throw new Error(`loadTranslation(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
+		 }
+	  }).then(async (responseJson) => {
+		 segmentTranslations.push({fromLang: responseJson.from_lang, toLang: responseJson.to_lang, fullTranslation: responseJson.translation});
+		 console.log(`TEST4: ${JSON.stringify(responseJson)}`);
+	  }).catch(async (error) => {
+		 let publicErrorMsg = error.message;
+		 let debugErrorMsg = error.message;
+		 if (error.message.includes("Failed to fetch")) {
+		       publicErrorMsg = "Failed to make network connection.";
+		       debugErrorMsg = "loadTranslation() error: failed to make network connection. Please double check your internet connections, or if the servers are up.";
+		 }
+
+		 // Strip out the developer details in the UI
+		 const responseIdx = publicErrorMsg.indexOf(" (response=");
+		 if (responseIdx >= 0) {
+		    publicErrorMsg = publicErrorMsg.substring(0, responseIdx);
+		 }
+
+		 browserColorLog(`${debugErrorMsg}: ${error}`, "FgRed");
+		 createErrorToast(`Network request error: ${publicErrorMsg}`);
+	  });
+	  
+	  // Wait 500ms between each call as to not overload the Google Translate API
+	  await new Promise(res => {setTimeout(res, 500);});
+      }
+
+      console.log(`TEST5: ${segmentTranslations}`);
+	  
+      addTranslation(segmentTranslations);
+}
+
 const addTranslation = (segmentTranslations: Translation[]) => {
       if (segmentTranslations.length !== segmentDatas.length) throw new Error(`addTranslation() error: translation.length=${translation.length} which is not equal to segmentDatas.length=${segmentDatas.length}! Unable to add translation ${translation.fromLang}->${translation.toLang}`);
 
@@ -161,7 +251,10 @@ const refreshSegmentContents = () => {
 
 const clearSegments = () => {
        for (const segmentData of segmentDatas) {
-       	      removeGlobalClickListener([segmentData.element]);
+       	      const segmentTimestamp = segmentData.element.querySelector("div.segment-timestamp");
+	      if (!segmentTimestamp) continue;
+
+	      segmentTimestamp.onclick = null;
        }
        eventManager.removeEventListeners("castTranscriptActiveSegments")
        removeTranslateListeners();
@@ -177,7 +270,12 @@ const attachSegmentListeners = (segmentListRenderer: HTMLElement, videoContainer
        }, "castTranscriptActiveSegments");
        
        for (const segmentData of segmentDatas) {
-       	      registerGlobalClickListener([segmentData.element], (withinBoundaries) => {if (withinBoundaries) videoContainer.seekTo(segmentData.startTime_s - 1);});
+       	      const segmentTimestamp = segmentData.element.querySelector("div.segment-timestamp");
+	      if (!segmentTimestamp) continue;
+
+	      segmentTimestamp.onclick = () => {
+	              videoContainer.seekTo(segmentData.startTime_s - 1);
+	      }
        }
 }
 
@@ -247,7 +345,7 @@ const buildEmptySegmentInnerHTML = (originalCaption: string, startTime_s: number
 			</div>
 		    </div>
 		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
-          	    <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">
+          	    <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" tabindex="-1">
 		        <!-- leave the caption empty, because dynamic scripts would set it to empty anyways. Set it later via javascript in setSegments() -->
 		    </yt-formatted-string>
 		    <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
@@ -340,7 +438,7 @@ const buildCaptionInnerHTML = (segmentData: SegmentData) => {
     			    tdHtml += `<td colspan="${noteTdIdx.tdStartIdx - prevEndIdx}"></td>`;
 			}
 			
-			tdHtml += `<td colspan="${noteTdIdx.tdEndIdx - noteTdIdx.tdStartIdx}" style="text-align: center; vertical-align: middle; background-color: royalBlue; border-left: 1px solid transparent; border-right: 1px solid transparent; -webkit-background-clip: padding; -moz-background-clip: padding; background-clip:padding-box;" path="${noteTdIdx.path.join('-')}"></td>`;
+			tdHtml += `<td id="tnote-button" colspan="${noteTdIdx.tdEndIdx - noteTdIdx.tdStartIdx}" style="text-align: center; vertical-align: middle; background-color: royalBlue; border-left: 1px solid transparent; border-right: 1px solid transparent; -webkit-background-clip: padding; -moz-background-clip: padding; background-clip:padding-box;" language="${translation.toLang}" path="${noteTdIdx.path.join('-')}"></td>`;
 			prevEndIdx = noteTdIdx.tdEndIdx;
 		    }
 
@@ -383,21 +481,47 @@ const attachTranslateListeners = () => {
            const rows = segmentData.element.querySelectorAll("#caption-content tr");
 	   for (const row of rows) {
 	       const language = row.getAttribute("language");
-	       const tnoteButtons = row.querySelectorAll("td[path]");
+	       const tnoteButtons = row.querySelectorAll("#tnote-button");
 	       for (const tnoteButton of tnoteButtons) {
 	           const path = tnoteButton.getAttribute("path");
-		   const translateNote = translateNotePanel.querySelector(`div[language=${language}][path="${path}"]`);
+		   const tnote = translateNotePanel.querySelector(`#tnote[language=${language}][path="${path}"]`);
 
-		   tnoteButton.onclick = () => {translateNote.style.display = "";};
+		   tnoteButton.onclick = () => {
+		       if (tnote.style.display === "none") {
+		           displayTranslateNotes([{language: language, path: path}], translateNotePanel);
+		       } else {
+		           displayTranslateNotes([], translateNotePanel);
+		       }};
+
+		   const hideTnoteButton = tnote.querySelector("#hide-tnote-button");
+		   hideTnoteButton.onclick = () => {
+		       displayTranslateNotes([], translateNotePanel);
+		   }
 	       }
 	   }
-	   
-	   const tnotes = segmentData.element.querySelectorAll("#tnote");
-	   for (const tnote of tnotes) {
-	       const hideTnoteButton = tnote.querySelector("#hide-tnote-button");
-	       hideTnoteButton.onclick = () => {tnote.style.display = "none";}
-	   }
        }
+}
+
+interface LanguageAndPath {
+      language: str;
+      path: str;
+}
+const displayTranslateNotes = (languageAndPaths: LanguageAndPath[], translateNotePanel: HTMLElement) => {
+      const translateNotes = translateNotePanel.querySelectorAll(`#tnote`);
+      for (const translateNote of translateNotes) {
+          const language = translateNote.getAttribute("language");
+	  const path = translateNote.getAttribute("path");
+
+	  const tnoteButtons = translateNote.closest("yt-formatted-string").querySelectorAll(`#tnote-button[language=${language}][path="${path}"]`);
+	  
+          if (languageAndPaths && languageAndPaths.length > 0 && languageAndPaths.some(item => {return item.language === translateNote.getAttribute("language") && item.path === translateNote.getAttribute("path");})) {
+	      translateNote.style.display = "";
+	      if (tnoteButtons) tnoteButtons.forEach(tnoteButton => tnoteButton.style.backgroundColor = "coral");
+	  } else {
+	      translateNote.style.display = "none";
+	      if (tnoteButtons) tnoteButtons.forEach(tnoteButton => tnoteButton.style.backgroundColor = "royalBlue");
+	  }
+      }
 }
 
 const removeTranslateListeners = () => {

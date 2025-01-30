@@ -2,7 +2,7 @@ import { debug, browserColorLog, createStyledElement } from "@/src/utils/utiliti
 
 import { CAST_TRANSCRIPT_PANEL_HTML, CAST_TRANSCRIPT_HEADER_HTML, CAST_TRANSCRIPT_BODY_HTML, DROPDOWN_MENU_HTML } from "./constants";
 import { buildDropdownWithTextTrigger, enableDropdownListeners, disableDropdownListeners } from "./dropdown"
-import { loadTranscriptSegments} from "./transcriptSegments";
+import { displayAllFullTranslations, hideAllTnotes, loadTranscriptSegments, loadTranslation } from "./transcriptSegments";
 import { createElement, d_ws, listenAttributeMutation, listenAttributePressed, registerGlobalClickListener, waitSetInnerHTML } from "./utils";
 
 
@@ -79,22 +79,50 @@ const buildLanguageDropdown = async (castHeader: HTMLElement) => {
 	                         {id: "hindi", text: "Hindi", isInitiallySelected: false}];
 				 
 	const settings = {};
-	return buildDropdownWithTextTrigger("Translate", dropdownOptions, dropdownContainer, settings);
+	return buildDropdownWithTextTrigger("Translate", dropdownOptions, dropdownContainer, settings, async (optionId, text) => {
+	       await loadTranslation(optionId);
+	       updatePanelMode();
+	});
 }
 
+var panelMode = "show-translations";
 const buildModeDropdown = async (castHeader: HTMLElement) => {
 	const dropdownContainer = castHeader.querySelector("#mode-dropdown");
 	if (!dropdownContainer) throw new Error("buildModeDropdown() error: cannot find dropdownContainer");
 	
-	const dropdownOptions = [{id: "simple-translate", text: "Simple Translate (ST)", triggerText: "ST", isInitiallySelected: true},
-	                         {id: "click-to-show", text: "Click to Show (CTS)", triggerText: "CTS", isInitiallySelected: false},
-	                         {id: "multiple-choice", text: "Listening - Multiple Choice (LMC)", triggerText: "MC", isInitiallySelected: false},
-	                         {id: "fill-in-the-blank", text: "Listening - Fill In the Blank (LFB)", triggerText: "FIB", isInitiallySelected: false},
-	                         {id: "multiple-choice", text: "Writing - Multiple Choice (WMC)", triggerText: "MC", isInitiallySelected: false},
-	                         {id: "fill-in-the-blank", text: "Writing - Fill In the Blank (WFB)", triggerText: "FIB", isInitiallySelected: false}];
+	const dropdownOptions = [{id: "show-translations", text: "Show Translations (ST)", triggerText: "Mode: ST", isInitiallySelected: true},
+	                         {id: "click-to-show", text: "Click to Show (CTS)", triggerText: "Mode: CTS", isInitiallySelected: false},
+	                         {id: "listening-multiple-choice", text: "Listening - Multiple Choice (LMC)", triggerText: "Mode: MC", isInitiallySelected: false},
+	                         {id: "listening-fill-in-the-blank", text: "Listening - Fill In the Blank (LFB)", triggerText: "Mode: FIB", isInitiallySelected: false},
+	                         {id: "writing-multiple-choice", text: "Writing - Multiple Choice (WMC)", triggerText: "Mode: MC", isInitiallySelected: false},
+	                         {id: "writing-fill-in-the-blank", text: "Writing - Fill In the Blank (WFB)", triggerText: "Mode: FIB", isInitiallySelected: false}];
 				 
-	const settings = {}
-	return buildDropdownWithTextTrigger("Mode", dropdownOptions, dropdownContainer, settings);
+	const settings = {setInitialTriggerTextAsInitialSelectedOption: true}
+	return buildDropdownWithTextTrigger("Mode", dropdownOptions, dropdownContainer, settings, (optionId, text) => {
+	       panelMode = optionId;
+	       updatePanelMode();
+	});
+}
+
+const updatePanelMode = () => {
+        switch (panelMode) {
+	      case "show-translations":
+	           displayAllFullTranslations();
+	      	   break;
+	      case "click-to-show":
+	           hideAllTnotes();
+	      	   break;
+	      case "listening-multiple-choice":
+	      	   break;
+	      case "listening-fill-in-the-blank":
+	      	   break;
+	      case "writing-multiple-choice":
+	      	   break;
+	      case "writing-fill-in-the-blank":
+	      	   break;
+	      default:
+	           throw new Error(`updatePanelMode() error: unsupported panelMode=${panelMode}`);
+	}
 }
 
 const attachHeaderListeners = (castTranscriptPanel: HTMLElement) => {

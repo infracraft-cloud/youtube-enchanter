@@ -73,11 +73,12 @@ const buildLanguageDropdown = async (castTranscriptPanel: HTMLElement) => {
 	const dropdownContainer = castTranscriptPanel.querySelector("#header #language-dropdown");
 	if (!dropdownContainer) throw new Error("buildLanguageDropdown() error: cannot find dropdownContainer");
 	
-	const dropdownOptions = [{id: "english", text: "English", isInitiallySelected: false},
-	                         {id: "spanish", text: "Spanish", isInitiallySelected: false},
-	                         {id: "french", text: "French", isInitiallySelected: false},
-	                         {id: "mandarin", text: "Mandarin", isInitiallySelected: false},
-	                         {id: "hindi", text: "Hindi", isInitiallySelected: false}];
+	const dropdownOptions = [{id: "en", text: "English", isInitiallySelected: false},
+	                         {id: "es", text: "Spanish", isInitiallySelected: false},
+	                         {id: "fr", text: "French", isInitiallySelected: false},
+	                         {id: "zh-CN", text: "Mandarin", isInitiallySelected: false},
+	                         {id: "hi", text: "Hindi", isInitiallySelected: false},
+	                         {id: "ar", text: "Arabic", isInitiallySelected: false}];
 				 
 	const settings = {};
 	return buildDropdownWithTextTrigger("Translate", dropdownOptions, dropdownContainer, settings, async (optionId, text) => {

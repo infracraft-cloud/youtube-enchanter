@@ -1,15 +1,10 @@
 import { trustedPolicy} from "@/src/pages/embedded";
+import { browserColorLog } from "@/src/utils/utilities";
 
 import { createErrorToast, fetchTranslateApi } from "./utils";
 
-
-interface Index {
-	start: number;
-	end: number
-};
-
 interface Tnote {
-	indexes: Index[];
+	indexes: number[][];
 	translation: str;
 	
 	subnotes: TNote[];
@@ -160,8 +155,8 @@ const downloadTranslationData = async (segments: HTMLElement[], toLang: string, 
 		 createErrorToast(`Network request error: ${publicErrorMsg}`);
 	  });
 	  
-	  // Wait 500ms between each call as to not overload the Google Translate API
-	  await new Promise(res => {setTimeout(res, 500);});
+	  // Wait 250ms between each call as to not overload the Google Translate API
+	  await new Promise(res => {setTimeout(res, 250);});
       }
 }
 
@@ -219,8 +214,8 @@ const getSliceIdxs = (caption: string, translations: Translations[]) => {
 	for (const translation of translations) {
 	    recurseTnotes(translation.fullTranslation, (tnote, depth, path) => {
 	    	for (const index of tnote.indexes) {
-		    uniqueIdxs.add(index.start);
-		    uniqueIdxs.add(index.end);
+		    uniqueIdxs.add(index[0]);
+		    uniqueIdxs.add(index[1]);
 		}
             }, null);
 	}
@@ -235,7 +230,7 @@ const buildCaptionRowHTML = (captionPieces: string[]) : string => {
 	let html = `        <tr language="original" depth="0">`;
 	for (const captionPiece of captionPieces) {
 	    html += `            <td id="caption" style="text-align: center; vertical-align: middle;">
-				     ${captionPiece}
+				     ${captionPiece.replace(" ", "&nbsp;")}
 				 </td>`;
 	}
 	html += `        </tr>`;
@@ -259,11 +254,11 @@ const computeDepth2TnoteDatas = (translation: Translation, captionSliceIdxs: num
 	    if (!(depth in depth_2_tnoteDatas)) depth_2_tnoteDatas[depth] = [];
 	    const tnoteDatas = depth_2_tnoteDatas[depth];
 
-	    // tnote.startIdx and captionSliceIdxs are string indexes
+	    // tnote.indexes and captionSliceIdxs are string indexes
 	    // We must convert these to <td> indexes
 	    for (const index of tnote.indexes) {
-		const tdStartIdx = captionSliceIdxs.findLastIndex(idx => idx <= index.start );
-		const tdEndIdx = captionSliceIdxs.findIndex(idx => idx >= index.end );
+		const tdStartIdx = captionSliceIdxs.findLastIndex(idx => idx <= index[0] );
+		const tdEndIdx = captionSliceIdxs.findIndex(idx => idx >= index[1] );
 
 		tnoteDatas.push({tnote: tnote, tdStartIdx: tdStartIdx, tdEndIdx: tdEndIdx, path: path});
 	    }
@@ -280,7 +275,7 @@ const buildTnoteButtonRowHTML = (depth: number, captionPieces: string[], transla
 
         if (tnoteDatas && tnoteDatas.length > 0) {
 	    if (tnoteDatas[0].tdStartIdx > 0) {
-		html = `<td colspan="${tnoteDatas[0].tdStartIdx}"></td>` + html;
+		html += `<td colspan="${tnoteDatas[0].tdStartIdx}"></td>`;
 	    }
 
 	    let firstSeenTdStartIdx = null;

@@ -46,7 +46,10 @@ export const d_ws = DEBUG_WAIT_SET_INNER_HTML = true;
 export const fetchTranscribeApi = async (youtubeVideoUrl?: string) => {
         if (!youtubeVideoUrl) youtubeVideoUrl = window.location.href;
         return fetch(`${TRANSCRIBE_API_URL}?api-key=aaa&url=${encodeURIComponent(youtubeVideoUrl, "utf-8")}`, {
-	       method: "GET"
+	       method: "GET",
+	       headers: {
+		 "X-YT-LENGTH-S": getVideoContainer()?.getDuration()
+	       }
 	})
 }
 

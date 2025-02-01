@@ -35,10 +35,10 @@ export const loadTranscriptSegments = async (castTranscriptPanel: HTMLElement) =
          	      throw new Error(`populateTranscript(): fetch() returned an error with status ${response.status}: ${response.statusText} (response=${JSON.stringify(json)})`);
 	       }
 	}).then(async (responseJson) => {
-	       const newSegmentDatas = responseJson.transcription.chunks.map(segmentJson => ({caption: segmentJson.text,
-											      startTime_s: segmentJson.timestamp[0],
-											      endTime_s: segmentJson.timestamp[1],
-											      element: createEmptySegment(segmentJson.text)}));
+	       const newSegmentDatas = responseJson.segments.map(segmentJson => ({caption: segmentJson.text,
+										  startTime_s: segmentJson.start_s,
+										  endTime_s: segmentJson.end_s,
+										  element: createEmptySegment(segmentJson.text)}));
 
 	       await setSegments(castTranscriptPanel, newSegmentDatas, "done");
 	}).catch(async (error) => {

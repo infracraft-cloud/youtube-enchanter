@@ -11,8 +11,8 @@ interface Tnote {
 };
 
 interface Translation {
-	fromLang: str;
-	toLang: str;
+	sourceLang: str;
+	targetLang: str;
 
 	query: str;  // NOTE: this is the query that the API server computed the translation from
 	fullTranslation: TNote;
@@ -28,12 +28,12 @@ interface LanguageAndPath {
 var segment_2_translations : Map<HTMLElement, Translation[]> = new Map<HTMLElement, Translation[]>()
 
 
-export const loadTranslation = async (castTranscriptPanel, toLang: string, fromLang?: string) => {
+export const loadTranslation = async (castTranscriptPanel, targetLang: string, sourceLang?: string) => {
      const segments = castTranscriptPanel.querySelectorAll("#segments-container #segment");
      if (!segments) throw new Error("loadTranslation() error: cannot find segments of castTranscriptPanel");
      
      removeAllTranslations();
-     await downloadTranslationData(segments, toLang, fromLang);
+     await downloadTranslationData(segments, targetLang, sourceLang);
      rebuildSegmentsWithTranslation()
      attachTranslationListeners();
 }
@@ -107,16 +107,16 @@ const removeAllTranslations = () => {
 
 // Initiates the API call to download data to populate the private global variable 'segment_2_translations' so that the other translation functions
 // have the right data to work properly.
-const downloadTranslationData = async (segments: HTMLElement[], toLang: string, fromLang?: string) => {
+const downloadTranslationData = async (segments: HTMLElement[], targetLang: string, sourceLang?: string) => {
       for (const segment of segments) {
           const caption = segment.getAttribute("caption");
 	  if (!caption) throw new Error(`downloadTranslationData() error: cannot find the caption for the corresponding segment`);
 	  
           const postData = {
 	  	 query: caption,
-		 to_lang: toLang
+		 target_lang: targetLang
 	  }
-	  if (fromLang) postData.from_lang = fromLang;
+	  if (sourceLang) postData.source_lang = sourceLang;
 	  
 	  await fetchTranslateApi(postData).then(async (response) => {
 		 if (response.status == 200) {
@@ -133,8 +133,8 @@ const downloadTranslationData = async (segments: HTMLElement[], toLang: string, 
 	  }).then(async (responseJson) => {
 		 if (!segment_2_translations.has(segment)) segment_2_translations.set(segment, [])
 		 
-		 segment_2_translations.get(segment).push({fromLang: responseJson.from_lang,
-		                                           toLang: responseJson.to_lang,
+		 segment_2_translations.get(segment).push({sourceLang: responseJson.source_lang,
+		                                           targetLang: responseJson.target_lang,
 							   query: responseJson.query,
 							   fullTranslation: responseJson.translation});
 	  }).catch(async (error) => {
@@ -270,8 +270,8 @@ const computeDepth2TnoteDatas = (translation: Translation, captionSliceIdxs: num
 	return depth_2_tnoteDatas;
 }
 
-const buildTnoteButtonRowHTML = (depth: number, captionPieces: string[], translation: Translation, tnoteDatas: TnoteButtonHTMLData[]) => {
-	let html = `        <tr language="${translation.toLang}" depth="${depth}" style="height: 4px;">`;
+const buildTnoteButtonRowHTML = (depth: number, captionPieces: string[], translation: Translation, tnoteDatas: TnoteButtonHTMLData[]) : string => {
+	let html = `        <tr language="${translation.targetLang}" depth="${depth}" style="height: 4px;">`;
 
         if (tnoteDatas && tnoteDatas.length > 0) {
 	    if (tnoteDatas[0].tdStartIdx > 0) {
@@ -286,7 +286,7 @@ const buildTnoteButtonRowHTML = (depth: number, captionPieces: string[], transla
 		    html += `<td colspan="${tnoteData.tdStartIdx - prevEndIdx}"></td>`;
 		}
 
-		html += `<td id="tnote-button" language="${translation.toLang}" path="${tnoteData.path.join('-')}" colspan="${tnoteData.tdEndIdx - tnoteData.tdStartIdx}" style="text-align: center; vertical-align: middle; background-color: royalBlue; border-left: 1px solid transparent; border-right: 1px solid transparent; -webkit-background-clip: padding; -moz-background-clip: padding; background-clip:padding-box;"></td>`;
+		html += `<td id="tnote-button" language="${translation.targetLang}" path="${tnoteData.path.join('-')}" colspan="${tnoteData.tdEndIdx - tnoteData.tdStartIdx}" style="text-align: center; vertical-align: middle; background-color: royalBlue; border-left: 1px solid transparent; border-right: 1px solid transparent; -webkit-background-clip: padding; -moz-background-clip: padding; background-clip:padding-box;"></td>`;
 		prevEndIdx = tnoteData.tdEndIdx;
 	    }
 
@@ -299,17 +299,68 @@ const buildTnoteButtonRowHTML = (depth: number, captionPieces: string[], transla
 	return html;
 }
 
-const buildTnotePanelHTML = (translations: Translation[]) => {
+const buildTnotePanelHTML = (translations: Translation[]) : string => {
 	let html = `<div id="tnote-panel">`;
 	for (const translation of translations) {
 	    recurseTnotes(translation.fullTranslation, (tnote, depth, path) => {
-		html += `    <div id="tnote" language="${translation.toLang}" path="${path.join('-')}" style="display: none;">
-				 ${tnote.translation}<a language="${translation.toLang}" path="${path.join('-')}" id="hide-tnote-button" style="margin-left: 16px; color: crimson">X</a> 
+		html += `    <div id="tnote" language="${translation.targetLang}" path="${path.join('-')}" style="display: none;">
+				 ${tnote.translation}
+				 ${buildTnoteAnnotationsContainerHTML(tnote)}
+				 <a language="${translation.targetLang}" path="${path.join('-')}" id="hide-tnote-button" style="margin-left: 16px; color: crimson">X</a> 
 			     </div>`;
 	    }, null);
 	}
 	html += `</div>`;
 	return html;
+}
+
+const buildTnoteAnnotationsContainerHTML = (tnote: TNote) => {
+       let possibleWords = tnote?.annotations?.possible_words ?? []
+       if (possibleWords.length == 0) return ""
+       
+       html = `        <div id="tnote-annotations"><table id="possible-words"><tbody>`;
+       for (const possibleWord of possibleWords) {
+             html += `<tr><td style="vertical-align:top;"><h3>${possibleWord?.word}</h3></td><td>${serializeVariableToHTML(possibleWord)}</td></tr>`;
+       }
+       html += `        </tobdy></table></div>`;
+       return html;
+}
+
+const serializeVariableToHTML = (variable: Any) : string => {
+      if (variable instanceof Array || variable instanceof Set) {
+          if (variable.length === 0) {
+	      return null;
+          } else if (variable[0] instanceof Array || variable[0] instanceof Set || variable[0] instanceof Object || variable[0] instanceof Map) {
+	      let html = "";
+	      for (const item of variable) {
+		  html += `<div>${serializeVariableToHTML(item)}</div>`;
+	      }
+	      return html;
+	  } else {
+	      const tagName = (variable instanceof Array) ? "ol" : "ul";
+	      let html = `<${tagName}>`;
+	      for (const item of variable) {
+		  html += `<li>${serializeVariableToHTML(item)}</li>`;
+	      }
+	      html += `</${tagName}>`;
+	      return html;
+	  }
+      } else if (variable instanceof Object || variable instanceof Map) {
+          let html = `<table><tbody>`;
+          for (const [key, value] of Object.entries(variable)) {
+	      const valueHtml = serializeVariableToHTML(value);
+	      if (!valueHtml || valueHtml.length == 0) continue;
+	      
+              html += `<tr>
+	              <td style="vertical-align:top;"><b>${key}:</b></td>
+		      <td>${valueHtml}</td>
+		  </tr>`;
+	  }
+	  html += `</tbody></table>`;
+	  return html;
+      } else {
+	  return `${variable}`;
+      }
 }
 
 const recurseTnotes = (tnote: Tnote, preCallback: (tnote: Tnote, depth: number, path: number[]) => void, postCallback: (tnote: Tnote, depth: number, path: number[]) => void) => {

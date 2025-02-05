@@ -55,8 +55,8 @@ export const fetchTranscribeApi = async (youtubeVideoUrl?: string) => {
 
 interface TranslateQuery {
         query: string;
-	toLang: string;
-	fromLang?: string;
+	targetLang: string;
+	sourceLang?: string;
 }
 export const fetchTranslateApi = async (postData: TranslateQuery) => {
         return fetch(`${TRANSLATE_API_URL}?api-key=aaa`, {
